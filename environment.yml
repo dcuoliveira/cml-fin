@@ -1,0 +1,25 @@
+name: cml-fin
+channels:
+  - pip
+  - defaults
+  - conda-forge
+  - pytorch
+dependencies:
+  - python=3.10.0
+  - pip
+  - pandas
+  - numpy
+  - scipy
+  - pdblp
+  - tqdm
+  - jupyterlab
+  - pytorch
+  - torchvision 
+  - torchaudio 
+  - pytorch-sparse 
+  - scikit-learn
+  - statsmodels
+  - lightgbm
+  - seaborn
+pip:
+  - ICPy
