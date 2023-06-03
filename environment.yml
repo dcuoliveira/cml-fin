@@ -16,10 +16,9 @@ dependencies:
   - pytorch
   - torchvision 
   - torchaudio 
-  - pytorch-sparse 
   - scikit-learn
   - statsmodels
   - lightgbm
   - seaborn
-pip:
-  - ICPy
+  - pip:
+    - ICPy
