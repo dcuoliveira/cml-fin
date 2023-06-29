@@ -1,0 +1,37 @@
+---
+title: "Test seqICP on ETFs data - Daniel"
+output:
+---
+
+
+```{r}
+library("dplyr")
+library("seqICP")
+library("readr")
+library("here")
+```
+
+```{r}
+inputs_path <- file.path(here(), "src", "data", "inputs")
+```
+
+
+First, lets load the dataset:
+
+```{r}
+df <- read_csv(file = file.path(inputs_path, "2000_etfs_macro_transf.csv"))
+head(df)
+```
+Below, we list the hypothesis of the seqICP and then we test them:
+
+> 1)
+> 2)
+
+```{r}
+
+```
+
+
+
+
+
