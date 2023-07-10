@@ -3,6 +3,8 @@
 *.DS_Store
 
 # R
+*.RData
+*/.RData
 *.Rproj
 */.Rpro
 *.Rproj.user
