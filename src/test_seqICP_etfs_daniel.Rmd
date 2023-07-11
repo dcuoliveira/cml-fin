@@ -5,97 +5,75 @@ output:
 
 
 ```{r}
+rm(list=ls())
 library("dplyr")
 library("seqICP")
 library("readr")
 library("here")
-```
+library("data.table")
 
-```{r}
 inputs_path <- file.path(here(), "src", "data", "inputs")
 ```
-
 
 First, lets load the dataset:
 
 ```{r}
-df <- read_csv(file = file.path(inputs_path, "2000_etfs_macro_transf.csv"))
+df <- read_csv(file = file.path(inputs_path, "monthly_ret_etfs_macro_tranfs.csv"))
 head(df)
 ```
 ```{r}
 dim(df)
 ```
 
+Below, we list the hypothesis of the seqICP:
 
-Below, we list the hypothesis of the seqICP and then we test them:
+> 1) The relationship of yt on Xt is linear on the parameters (linearity)
+> 2) et's iid are gaussian
+> 3) P(yt) is gaussian
+> 4) No restrictions on P(Xt) and P(yt, Xt)
 
-> 1)
-> 2)
+## Testing 3) using the Shapiro-Wilk test
 
-Since L = length(grid) and grid is always a vector with three elements, then
-
-L.tot = choose(L, 2) = choose(3, 2) = 3
-
-is always true.
-
-Once we have L.tot, we define a list of indices to represent the proper subset of the time steps in X. Each of the elements of this list can be considered ENVIRONMENTS. The authors consider only the situation where we have the number of environments is 2*l.tot. Thus, we always have 6 environments. The problem is that environments 2 and 3 intersect each other. Thus, we consider 6-2=4 final environments when computing the relevant test statistics.
-
+The Shapiro-Wilk null hypothesis is that there is no difference between your distribution and a normal distribution.
+  
 ```{r}
-X <- df %>% dplyr::select(-date) %>% as.matrix(df)
+etf_names <- c("SPY" ,"XLI" ,"XLE" ,"XLK" ,"XLV", "XLU" ,"XLF" ,"XLY" ,"XLP" ,"XLB" ,"XHB", 
+               "DBC" ,"USO" ,"UGA" ,"UNG" ,"SLV" ,"GLD", "TLT" ,"IEF" ,"IEI" ,"SHY" ,"MBB" ,
+               "VCIT", "UUP" ,"FXE" ,"FXB" ,"FXY" ,"FXA" ,"RPI")
+pval_threshold <- 0.05
 
-# number of observations
-n <- nrow(X)
-
-X <- cbind(matrix(1, n, 1),X)
-
-# number of variables
-d <- ncol(X)
-
-grid <- c(0, round(nrow(X)/2), nrow(X))
-L <- length(grid)
-L.tot <- choose(L,2)
-
-# compute all combinations of elements on the grid
-t <- combn(L,2,simplify=TRUE)
-
-# initialize variables
-Z <- vector("list",2*L.tot)
-env <- vector("list",2*L.tot)
-fullenv <- L-1
-for(i in 1:L.tot){
-  cp1 <- grid[t[1,i]]
-  cp2 <- grid[t[2,i]]
-  env[[i]] <- (cp1+1):cp2
-  if(cp1==0 & cp2!=n){
-    env[[i+L.tot]] <- (cp2+1):n
-  }
-  else if(cp2==n & cp1!=0){
-    env[[i+L.tot]] <- 1:cp1
-  }
-  else if(cp1==0 & cp2==n){
-    env[[i+L.tot]] <- 1:n
-  }
-  else{
-    env[[i+L.tot]] <- c(1:cp1,(cp2+1):n)
-  }
+shapiro_pvals <- list()
+for (name in etf_names){
+  stats <- shapiro.test(df[[name]])
+  pval <- stats$p.value
+  shapiro_pvals[[name]] <- pval 
 }
+shapiro_pvals_df <- do.call("rbind", shapiro.pvals) %>% as.data.table(keep.rownames=TRUE) %>%
+  rename(pval=V1, etf=rn) %>% arrange(pval)
 
-# write grid to CP
-CP <- grid
+non_gaussian_etfs <- dim(shapiro_pvals_df[ shapiro_pvals_df$pval < pval_threshold, ])[1]
+gaussian_etfs <- dim(shapiro_pvals_df[ shapiro_pvals_df$pval >= pval_threshold, ])[1]
 
-# compute relevant comparisons
-pairwise <- cbind((1:L.tot)[-fullenv],(1:L.tot)[-fullenv]+L.tot)
-
-# set L.tot to the full number of environments
-L.tot <- 2*L.tot
+print(paste0("Non-gaussian ETFs: ", non_gaussian_etfs, " Gaussian: ", gaussian_etfs))
 ```
+
+## Running seqICP
 
 ```{r}
-pairwise
+X <- df %>% select(-date, -one_of(etf_names)) %>% as.matrix()
+Y <- df %>% select(-date, one_of(etf_names)) %>% as.matrix()
+seqICP(X=X,
+       Y=Y,
+       test = "decoupled",
+       par.test = list(grid = c(0,round(nrow(X)/2), nrow(X)),
+                       complements = FALSE, link = sum,
+                       alpha = 0.05, B = 100, permutation = FALSE),
+       model = "iid",
+       par.model = list(pknown = FALSE, p = 0, max.p = 10),
+       max.parents = ncol(X),
+       stopIfEmpty = TRUE,
+       silent = TRUE)
 ```
-
-
-
 
 
 
