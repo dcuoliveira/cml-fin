@@ -48,7 +48,7 @@ for (name in etf_names){
   pval <- stats$p.value
   shapiro_pvals[[name]] <- pval 
 }
-shapiro_pvals_df <- do.call("rbind", shapiro.pvals) %>% as.data.table(keep.rownames=TRUE) %>%
+shapiro_pvals_df <- do.call("rbind", shapiro_pvals) %>% as.data.table(keep.rownames=TRUE) %>%
   rename(pval=V1, etf=rn) %>% arrange(pval)
 
 non_gaussian_etfs <- dim(shapiro_pvals_df[ shapiro_pvals_df$pval < pval_threshold, ])[1]
@@ -60,11 +60,12 @@ print(paste0("Non-gaussian ETFs: ", non_gaussian_etfs, " Gaussian: ", gaussian_e
 ## Running seqICP
 
 ```{r}
+name <- etf_names[1]
+Y <- df %>% select(one_of(name)) %>% as.matrix()
 X <- df %>% select(-date, -one_of(etf_names)) %>% as.matrix()
-Y <- df %>% select(-date, one_of(etf_names)) %>% as.matrix()
 seqICP(X=X,
        Y=Y,
-       test = "decoupled",
+       test = "hsic",
        par.test = list(grid = c(0,round(nrow(X)/2), nrow(X)),
                        complements = FALSE, link = sum,
                        alpha = 0.05, B = 100, permutation = FALSE),
