@@ -128,7 +128,7 @@ summary(lm(V1 ~ `Series 2` + `Series 3` + `Series 4` + `Series 5` -1, data = cbi
 ```{r}
 seqICP(X=X,
        Y=y,
-       test = "block.mean",
+       test = "hsic",
        model = "ar",
        stopIfEmpty = FALSE,
        silent = TRUE)

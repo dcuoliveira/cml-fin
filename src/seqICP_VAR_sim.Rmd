@@ -1,0 +1,64 @@
+---
+title: "Time Series Properties using 'gratis' package"
+output:
+---
+
+
+```{r}
+rm(list=ls())
+library("seqICP")
+library("data.table")
+library("dplyr")
+library("tsDyn")
+```
+
+## Goal
+
+The main goal of this notebook is to evaluate the usefulness of seqICP when applied on simulations of a VAR process.
+
+### Simulated VAR(1) model with $k=3$ and $n=100$
+
+```{r}
+## VAR.sim: simulate VAR as in Enders 2004, p 268
+B1 <- matrix(c(0.2, 0, 0.7, 0, 0.2, 0, 0.7, 0.2, 0), nrow = 3, ncol = 3, byrow = TRUE)
+var_sim <- VAR.sim(B=B1, n=100, include="none")
+ts.plot(var_sim, type="l", col=c(1,2, 3))
+print(B1)
+print(summary(tsDyn::lineVar(data = var_sim, lag = 1)))
+```
+
+```{r}
+X <- var_sim %>% as.data.table() %>% dplyr::select(-V1)
+y <- var_sim %>% as.data.table() %>% dplyr::select(V1)
+
+seqICP(X=X,
+       Y=y,
+       test = "hsic",
+       model = "ar",
+       stopIfEmpty = FALSE,
+       silent = TRUE)
+```
+### Mean Shifted VAR(1)
+
+```{r}
+var_sim_shifted <- rbind(var_sim[1:(dim(var_sim)[1] / 2), ], (var_sim[(dim(var_sim)[1] / 2):dim(var_sim)[1], ]) + 4)
+
+ts.plot(var_sim_shifted, type="l", col=c(1,2, 3))
+```
+
+```{r}
+
+X_shifted <- var_sim_shifted %>% as.data.table() %>% dplyr::select(-V1)
+y_shifted <- var_sim_shifted %>% as.data.table() %>% dplyr::select(V1)
+
+seqICP(X=X_shifted,
+       Y=y_shifted,
+       test = "hsic",
+       model = "ar",
+       stopIfEmpty = FALSE,
+       silent = TRUE)
+```
+
+
+
+
