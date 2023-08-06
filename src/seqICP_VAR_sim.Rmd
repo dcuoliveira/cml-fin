@@ -22,21 +22,69 @@ The main goal of this notebook is to evaluate the usefulness of seqICP when appl
 ## VAR.sim: simulate VAR as in Enders 2004, p 268
 B1 <- matrix(c(0.2, 0, 0.7, 0, 0.2, 0, 0.7, 0.2, 0), nrow = 3, ncol = 3, byrow = TRUE)
 var_sim <- VAR.sim(B=B1, n=100, include="none")
-ts.plot(var_sim, type="l", col=c(1,2, 3))
-print(B1)
-print(summary(tsDyn::lineVar(data = var_sim, lag = 1)))
+ts.plot(var_sim, type="l", col=c(1, 2, 3))
 ```
+#### Design matrix (B) of the original VAR DGP
 
 ```{r}
-X <- var_sim %>% as.data.table() %>% dplyr::select(-V1)
-y <- var_sim %>% as.data.table() %>% dplyr::select(V1)
+print(B1)
+```
+#### VAR estimates using the simulated DGP
 
-seqICP(X=X,
-       Y=y,
-       test = "hsic",
-       model = "ar",
-       stopIfEmpty = FALSE,
-       silent = TRUE)
+```{r}
+summary(vars::VAR(y = var_sim, p = 1, type = c("none")))
+```
+
+#### seqICP estimates
+
+> Using lags implicitly
+
+```{r}
+p <- 1
+var_sim_df <- var_sim %>% as.data.table()
+varnames <- colnames(var_sim_df)
+
+Ss <- list()
+for (vn in varnames){
+  X <- var_sim_df %>% dplyr::select(-one_of(vn))
+  y <- var_sim_df %>% dplyr::select(one_of(vn))
+  
+  output <- seqICP(X=X, Y=y, test = "hsic", model = "ar", stopIfEmpty = FALSE, silent = TRUE)
+  S <- output$S
+  
+  Ss[[vn]] <- S
+}
+
+do.call("rbind", Ss)[,1]
+```
+> Using lags explcitly
+
+```{r}
+p <- 1
+var_sim_df <- var_sim %>% as.data.table()
+varnames <- colnames(var_sim_df)
+
+# create lags
+var_sim_lags_df <- var_sim_df
+for (lag in 1:p){
+  for (vn in varnames){
+    var_sim_lags_df <- var_sim_lags_df %>% dplyr::mutate(!!paste0(vn, ".L", lag) := lag(!!sym(vn), lag))
+  }
+}
+var_sim_lags_df <- var_sim_lags_df %>% tidyr::drop_na()
+
+Ss <- list()
+for (vn in varnames){
+  X <- var_sim_lags_df %>% dplyr::select(-one_of(vn))
+  y <- var_sim_lags_df %>% dplyr::select(one_of(vn))
+  
+  output <- seqICP(X=X, Y=y, test = "hsic", model = "iid", stopIfEmpty = FALSE, silent = TRUE)
+  S <- output$S
+  
+  Ss[[vn]] <- S
+}
+
+do.call("rbind", Ss)[,1]
 ```
 ### Mean Shifted VAR(1)
 
@@ -45,20 +93,113 @@ var_sim_shifted <- rbind(var_sim[1:(dim(var_sim)[1] / 2), ], (var_sim[(dim(var_s
 
 ts.plot(var_sim_shifted, type="l", col=c(1,2, 3))
 ```
+> Using lags implicitly
 
 ```{r}
+p <- 1
+var_sim_shifted_df <- var_sim_shifted %>% as.data.table()
+varnames <- colnames(var_sim_shifted_df)
 
-X_shifted <- var_sim_shifted %>% as.data.table() %>% dplyr::select(-V1)
-y_shifted <- var_sim_shifted %>% as.data.table() %>% dplyr::select(V1)
+Ss <- list()
+for (vn in varnames){
+  X <- var_sim_shifted_df %>% dplyr::select(-one_of(vn))
+  y <- var_sim_shifted_df %>% dplyr::select(one_of(vn))
+  
+  output <- seqICP(X=X, Y=y, test = "block.mean", model = "ar", stopIfEmpty = FALSE, silent = TRUE)
+  S <- output$S
+  
+  Ss[[vn]] <- S
+}
 
-seqICP(X=X_shifted,
-       Y=y_shifted,
-       test = "hsic",
-       model = "ar",
-       stopIfEmpty = FALSE,
-       silent = TRUE)
+do.call("rbind", Ss)[,1]
 ```
+> Using lags explicitly
 
+```{r}
+p <- 1
+var_sim_shifted_df <- var_sim_shifted %>% as.data.table()
+varnames <- colnames(var_sim_shifted_df)
+
+# create lags
+var_sim_shifted_lags_df <- var_sim_shifted_df
+for (lag in 1:p){
+  for (vn in varnames){
+    var_sim_shifted_lags_df <- var_sim_shifted_lags_df %>% dplyr::mutate(!!paste0(vn, ".L", lag) := lag(!!sym(vn), lag))
+  }
+}
+var_sim_shifted_lags_df <- var_sim_shifted_lags_df %>% tidyr::drop_na()
+
+Ss <- list()
+for (vn in varnames){
+  X <- var_sim_shifted_lags_df %>% dplyr::select(-one_of(vn))
+  y <- var_sim_shifted_lags_df %>% dplyr::select(one_of(vn))
+  
+  output <- seqICP(X=X, Y=y, test = "block.mean", model = "iid", stopIfEmpty = FALSE, silent = TRUE)
+  S <- output$S
+  
+  Ss[[vn]] <- S
+}
+
+do.call("rbind", Ss)[,1]
+```
+### Mean Shifted VAR(1), except for V1
+
+```{r}
+shift <- cbind(var_sim[(dim(var_sim)[1] / 2):dim(var_sim)[1], 1], var_sim[(dim(var_sim)[1] / 2):dim(var_sim)[1], 2:dim(var_sim)[2]] + 4)
+var_sim_shifted2 <- rbind(var_sim[1:(dim(var_sim)[1] / 2), ], shift)
+
+ts.plot(var_sim_shifted2, type="l", col=c(1,2, 3))
+```
+> Using lags implicitly
+
+```{r}
+p <- 1
+var_sim_shifted_df2 <- var_sim_shifted2 %>% as.data.table()
+varnames <- colnames(var_sim_shifted_df2)
+
+Ss <- list()
+for (vn in varnames){
+  X <- var_sim_shifted_df2 %>% dplyr::select(-one_of(vn))
+  y <- var_sim_shifted_df2 %>% dplyr::select(one_of(vn))
+  
+  output <- seqICP(X=X, Y=y, test = "block.mean", model = "ar", stopIfEmpty = FALSE, silent = TRUE)
+  S <- output$S
+  
+  Ss[[vn]] <- S
+}
+
+do.call("rbind", Ss)[,1]
+```
+> Using lags explicitly
+
+```{r}
+p <- 1
+var_sim_shifted_df2 <- var_sim_shifted2 %>% as.data.table()
+varnames <- colnames(var_sim_shifted_df2)
+
+# create lags
+var_sim_shifted_lags_df2 <- var_sim_shifted_df2
+for (lag in 1:p){
+  for (vn in varnames){
+    var_sim_shifted_lags_df2 <- var_sim_shifted_lags_df2 %>%
+      dplyr::mutate(!!paste0(vn, ".L", lag) := lag(!!sym(vn), lag))
+  }
+}
+var_sim_shifted_lags_df2 <- var_sim_shifted_lags_df2 %>% tidyr::drop_na()
+
+Ss <- list()
+for (vn in varnames){
+  X <- var_sim_shifted_lags_df2 %>% dplyr::select(-one_of(vn))
+  y <- var_sim_shifted_lags_df2 %>% dplyr::select(one_of(vn))
+  
+  output <- seqICP(X=X, Y=y, test = "block.mean", model = "iid", stopIfEmpty = FALSE, silent = TRUE)
+  S <- output$S
+  
+  Ss[[vn]] <- S
+}
+
+do.call("rbind", Ss)[,1]
+```
 
 
 
