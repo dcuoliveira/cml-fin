@@ -16,6 +16,7 @@ library("tsDyn")
 
 The main goal of this notebook is to evaluate the usefulness of seqICP when applied on simulations.
 
+
 ```{r}
 set.seed(1)
 
@@ -40,6 +41,8 @@ X3 <- c(X3a,X3b)
 Y <- c(Ya,Yb)
 Xmatrix <- cbind(X1, X2, X3)
 
+
+# Y = -0.7 x X1 + 0.5 x X2, regardless of e \in {a, b}
 ts.plot(Xmatrix, col = 1:dim(Xmatrix)[2])
 ```
 
@@ -53,9 +56,18 @@ summary(lm(Y~Xmatrix))
 ```
 
 ```{r}
-seqICP.result <- seqICP(X = Xmatrix, Y,
-par.test = list(grid = seq(0, na + nb, (na + nb)/10), complements = FALSE, link = sum,
-alpha = 0.05, B =100), max.parents = 4, stopIfEmpty=FALSE, silent=FALSE)
+# par.test = list(grid = seq(0, na + nb, (na + nb)/10),
+#                 complements = FALSE,
+#                 link = sum,
+#                 alpha = 0.05,
+#                 B =100)
+
+seqICP.result <- seqICP(X = Xmatrix,
+                        Y = Y,
+                        # par.test = par.test,
+                        # max.parents = 4,
+                        stopIfEmpty=FALSE,
+                        silent=FALSE)
 summary(seqICP.result)
 ```
 
