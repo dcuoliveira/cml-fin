@@ -283,7 +283,7 @@ for (vn in varnames){
 
 As we can see, seqICP was not able to identify the invariant set correctly for the variance shifted VAR(1) process.
 
-### Variance Shifted SVAR(1)
+### Variance Shifted SVAR(1) (Model C of section 6 from Pfister et al. (2018))
 
 We hypothesize that the reason why seqICP was not able to find the correct set of causal parents is because the original DGP must have at least one contemporaneous relationship. This scenario is precisely the context of structural vector autoregressive models (SVAR).
 
