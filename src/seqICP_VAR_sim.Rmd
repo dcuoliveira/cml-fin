@@ -292,13 +292,13 @@ In this context, we will try to artificially introduce a variance shift into the
 To do so, recall that $e \in \{a,b\}$ are two different environments. We define the following DGP for the variance shifted SVAR(1) process:
 
 $$
-x^a_{1,t} = 0.7x^a_{3,t} + N(0, 1)\\ 
+x^a_{1,t} = 0.7x^a_{3,t} + 0.5x^a_{2,t-1} + N(0, 1)\\ 
 x^a_{2,t} = 0.2x^a_{2,t-1} + N(0, 1)\\ 
 x^a_{3,t} = 0.2x^a_{2,t} + N(0, 1)\\ 
 $$
 
 $$
-x^b_{1,t} = 0.7x^b_{3,t} + N(0, 1)\\ 
+x^b_{1,t} = 0.7x^b_{3,t} + 0.5x^a_{2,t-1} + N(0, 1)\\ 
 x^b_{2,t} = 0.2x^b_{2,t-1} + N(0, 1)\\ 
 x^b_{3,t} = 0.2x^a_{2,t} + N(0, 3)\\ 
 $$
@@ -308,6 +308,8 @@ It can be seen by the above equations that $x_{1,t}$ depends on $x_{3,t}$. Below
 ```{r}
 
 set.seed(1)
+na <- 1000
+nb <- 1000
 n <- na + nb
 
 x1 <- matrix(data = NA, nrow = n, ncol = 1)
@@ -328,12 +330,12 @@ for (i in 1:n){
   if (i <= na){
     x2[i,] <- 0.2*x2[i-1,] + rnorm(n = 1, mean = 0, sd = 1)
     x3[i,] <- 0.2*x2[i,] + rnorm(n = 1, mean = 0, sd = 1)
-    x1[i,] <- 0.7*x3[i,] + rnorm(n = 1, mean = 0, sd = 1)
+    x1[i,] <- 0.7*x3[i,] + 0.5*x2[i-1,] + rnorm(n = 1, mean = 0, sd = 1)
   }
   else{
     x2[i,] <- 0.2*x2[i-1,] + rnorm(n = 1, mean = 0, sd = 1)
     x3[i,] <- 0.2*x2[i,] + rnorm(n = 1, mean = 0, sd = 3)
-    x1[i,] <- 0.7*x3[i,] + rnorm(n = 1, mean = 0, sd = 1)
+    x1[i,] <- 0.7*x3[i,] + 0.5*x2[i-1,] + rnorm(n = 1, mean = 0, sd = 1)
   }
   
 }
