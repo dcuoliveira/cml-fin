@@ -1,5 +1,5 @@
 # ---- [PART 1] Variance Shifted VAR(1) ----
-
+rm(list=ls())
 set.seed(1)
 # na <- 140
 # nb <- 80
@@ -158,12 +158,14 @@ summary(output)
 # SH: this should give back lag 1 of x1 and lag 1 of x2.
 
 # ---- [PART 2] Variance Shifted SVAR(1) (Model C of section 6 from Pfister et al. (2018)) ----
-
+rm(list=ls())
 set.seed(1)
 # na <- 140
 # nb <- 80
 na <- 1400
 nb <- 800
+
+n <- na + nb
 
 x1 <- matrix(data = NA, nrow = n, ncol = 1)
 x2 <- matrix(data = NA, nrow = n, ncol = 1)
@@ -201,7 +203,7 @@ colnames(var_sim_shifted_df2) <- c("x1", "x2", "x3")
 varnames <- colnames(var_sim_shifted_df2)
 
 # SH: I did get empty set when the sample size was small, but after increasing 
-#.  the sample size x2 is indeed significant as expected. 
+#.  the sample size x2 (that is actually x3) is indeed significant as expected. 
 vn <- "x1"
 X <- var_sim_shifted_df2 %>% dplyr::select(-one_of(vn))
 y <- var_sim_shifted_df2 %>% dplyr::select(one_of(vn))
@@ -237,7 +239,7 @@ print(paste0("Target: ", vn, " Features: ", paste(colnames(X), collapse = " ")))
 summary(output)
 
 # ---- [PART 2] Variance Shifted SVAR(1) (intervene on x1 and x2) ----
-
+rm(list=ls())
 set.seed(1)
 # na <- 140
 # nb <- 80
@@ -281,6 +283,17 @@ colnames(var_sim_shifted_df2) <- c("x1", "x2", "x3")
 varnames <- colnames(var_sim_shifted_df2)
 
 vn <- "x3"
+X <- var_sim_shifted_df2 %>% dplyr::select(-one_of(vn))
+y <- var_sim_shifted_df2 %>% dplyr::select(one_of(vn))
+
+# SH: now x3 indeed has x2 as the instantaneous effect
+output <- seqICP(X=X, Y=y, test = "decoupled", model = "ar", 
+                 par.model = list(pknown = TRUE, p = 1),
+                 stopIfEmpty = FALSE, silent = FALSE)
+print(paste0("Target: ", vn, " Features: ", paste(colnames(X), collapse = " ")))
+summary(output)
+
+vn <- "x1"
 X <- var_sim_shifted_df2 %>% dplyr::select(-one_of(vn))
 y <- var_sim_shifted_df2 %>% dplyr::select(one_of(vn))
 
