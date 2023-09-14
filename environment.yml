@@ -22,5 +22,6 @@ dependencies:
   - statsmodels
   - lightgbm
   - seaborn
+  - lingam
   - pip:
     - ICPy
