@@ -79,6 +79,8 @@ var_sim_shifted_df <- var_sim_shifted %>% as.data.table()
 colnames(var_sim_shifted_df) <- c("x1", "x2", "x3")
 varnames <- colnames(var_sim_shifted_df)
 
+write.csv(var_sim_shifted_df, file = file.path(getwd(), "data", "inputs", "gaussian_var_sim1.csv"))
+
 Ss <- list()
 Sdetails <- list()
 for (vn in varnames){
@@ -162,6 +164,8 @@ Finally, we run seqICP on the new dataset:
 var_sim_shifted_df2 <- var_sim_shifted2 %>% as.data.table()
 colnames(var_sim_shifted_df2) <- c("x1", "x2", "x3")
 varnames <- colnames(var_sim_shifted_df2)
+
+write.csv(var_sim_shifted_df2, file = file.path(getwd(), "data", "inputs", "gaussian_var_sim2.csv"))
 
 Ss <- list()
 Sdetails <- list()
