@@ -1,0 +1,390 @@
+---
+title: "Testing seqICP on SVAR(0) and VAR(1)"
+output:
+---
+
+
+```{r echo=FALSE, message=FALSE}
+rm(list=ls())
+library("seqICP")
+library("data.table")
+library("dplyr")
+library("tsDyn")
+library("forecast")
+```
+
+## Goal
+
+The main goal of this notebook is to evaluate the usefulness of seqICP when applied on simulations of a simple VAR(1) process.
+
+### Sanity check
+
+First, lets run the example for the package documentation so as to check everything is fine.
+
+Let $e \in \{a,b\}$ be two different environments governed by the following SCM:
+
+$$
+x^a_{1,t} = N_a(0.3, 0.09)  \\
+x^a_{3,t} = x^a_{1,t} + N_a(0.2, 0.04) \\
+y^a_{t} = -0.7x^a_{1,t} + 0.6x^a_{3,t} + N_a(0.1, 0.01) \\
+x^a_{2,t} = -0.5*y^a_{t} + 0.5*x^a_{3,t} + N_a(0.1, 0.01)
+$$
+
+$$
+x^b_{1,t} = N_b(0.3, 0.09)  \\
+x^b_{3,t} = N_b(0.5, 0.25) \\
+y^b_{t} = -0.7x^b_{1,t} + 0.6x^b_{3,t} + N_b(0.1, 0.01) \\
+x^a_{2,t} = -0.5*y^a_{t} + 0.5*x^a_{3,t} + N_a(0.1, 0.01)
+$$
+
+Thus, a change has occurred on the distribution of $x^b_{3,t}$ between environments, whereas the SCM of $y_t$ remained constant. More precisely, we have:
+
+$$
+x^a_{3,t} \sim N(x^a_{1,t} + 0.2, 0.04) \\
+x^b_{3,t} \sim N_b(0.5, 0.25) \\
+$$
+
+and
+
+$$
+y^e_{t} = -0.7x^e_{1,t} + 0.6x^e_{3,t} + N_e(0.1, 0.01) \\
+$$
+regardless of $e$. Lets sample the above process:
+
+```{r}
+set.seed(1)
+
+# environment 1
+na <- 140
+X1a <- 0.3*rnorm(na)
+X3a <- X1a + 0.2*rnorm(na)
+Ya <- -.7*X1a + .6*X3a + 0.1*rnorm(na)
+X2a <- -0.5*Ya + 0.5*X3a + 0.1*rnorm(na)
+
+# environment 2
+nb <- 80
+X1b <- 0.3*rnorm(nb)
+X3b <- 0.5*rnorm(nb)
+Yb <- -.7*X1b + .6*X3b + 0.1*rnorm(nb)
+X2b <- -0.5*Yb + 0.5*X3b + 0.1*rnorm(nb)
+
+# combine environments
+X1 <- c(X1a,X1b)
+X2 <- c(X2a,X2b)
+X3 <- c(X3a,X3b)
+Y <- c(Ya,Yb)
+Xmatrix <- cbind(X1, X2, X3)
+
+svar_sim <- cbind(Y, Xmatrix)
+```
+
+Here are the autocorrelation functions
+
+```{r}
+for (i in 1:dim(svar_sim)[2]){
+  print(paste0("x", i))
+  ggtsdisplay(svar_sim[, i])
+}
+```
+
+and the autocorrelation of the square of the series
+
+```{r}
+for (i in 1:dim(svar_sim)[2]){
+  print(paste0("x", i))
+  ggtsdisplay(svar_sim[, i]^2)
+}
+```
+
+We can note a few interesting observations from the DGP definition and the ACF/PACF.First, from the DGP definition we can conclude that there are only contemporaneous dependencies in the time series. Despite this fact, from a quick inspection of the ACF and PACF's of the raw time series it seems that the shift on $x_{3,t}$'s distribution has introduced some time dependencies on $y_t$ and itself. For instance, lags two and five for the ACF of $y_t$ and lag five for the ACF of $x_{3,t}$ are significant. Third, we can see that shift in $x_{3,t}$ distribution translates into a shift in $y_t$'s variance. From a a visual inspection of the time series of the squares of $y_t$ and $x_{3,t}$ we can see that there is a big shift in its variance starting from timestep 130. Furthermore, this shift has introduced arch effects into the time series, which translates into heteroskedasticity of the processes.
+
+From the above observations we can make the following statements about the target $y_t$:
+
+> 1) It is non-stationary
+> 2) Its DGP is invariant across enviroments
+> 3) The main shift is in its variance
+> 4) There are only comtemporaneous dependencies in the DGP
+
+We now run seqICP on the simulations:
+
+```{r}
+seqICP.result <- seqICP(X = Xmatrix,
+                        Y = Y,
+                        stopIfEmpty=FALSE,
+                        silent=FALSE)
+summary(seqICP.result)
+```
+```{r}
+seqICP.result <- seqICP(X = Xmatrix,
+                        Y = Y,
+                        model = "ar",
+                        stopIfEmpty=FALSE,
+                        silent=FALSE)
+summary(seqICP.result)
+```
+
+From the above results we can see that seqICP was able to find the correct set of causal parents even if we didn't know that no lags were present on the original DGP.
+
+### Simulated VAR(1) model with $k=3$ and $n=100$
+
+Now we proceed by testing seqICP on a multivariate time series process that has lag dependencies across variables but no clear shift in distribution. Consider the following DGP:
+
+$$
+x_{1,t} = 0.2x_{1,t-1} + 0.7x_{3,t-1} + N(0, 1)\\ 
+x_{2,t} = 0.2x_{2,t-1} + N(0, 1)\\\ 
+x_{3,t} = 0.7x_{1,t-1} + 0.2x_{2,t-1} + N(0, 1)\\\ 
+$$
+
+```{r}
+## VAR.sim: simulate VAR as in Enders 2004, p 268
+B1 <- matrix(c(0.2, 0, 0.7, 0, 0.2, 0, 0.7, 0.2, 0), nrow = 3, ncol = 3, byrow = TRUE)
+var_sim <- VAR.sim(B=B1, n=na+nb, include="none")
+```
+
+Here are the autocorrelation functions
+
+```{r}
+for (i in 1:dim(var_sim)[2]){
+  print(paste0("x", i))
+  ggtsdisplay(var_sim[, i])
+}
+```
+
+and the autocorrelation of the square of the series
+
+```{r}
+for (i in 1:dim(var_sim)[2]){
+  print(paste0("x", i))
+  ggtsdisplay(var_sim[, i]^2)
+}
+```
+From a visual inspection of the ACFs and PACFs of the raw and squares of the time series we can notice two main differences. First, all raw time series have a much stronger time dependence which is induced by the lags of the time series. Furthermore, there is no clear shift in mean and/or variance of the series. Therefore we can conclude that the process is jointly stationary.
+
+```{r}
+var_sim_df <- var_sim %>% as.data.table()
+colnames(var_sim_df) <- c("x1", "x2", "x3")
+varnames <- colnames(var_sim_df)
+
+Ss <- list()
+Sdetails <- list()
+for (vn in varnames){
+  X <- var_sim_df %>% dplyr::select(-one_of(vn))
+  y <- var_sim_df %>% dplyr::select(one_of(vn))
+  
+  output <- seqICP(X=X, Y=y, model = "ar",stopIfEmpty = FALSE, silent = TRUE)
+  Sdetails[[vn]] <- output
+  
+  print(paste0("Target: ", vn, " Features: ", paste(colnames(X), collapse = " ")))
+  summary(output)
+}
+```
+
+From the above results we can see that seqICP was not able to find the correct set of causal parents for any of the equations. This result actually makes sense since our original DGP is stationary, and thus violates one of the assumptions of seqICP. 
+
+### Variance Shifted VAR(1)
+
+To solve for the stationarity issue we had before, we will try to artificially introduce a variance shift into the VAR(1) process we defined before.
+
+To do so, recall that $e \in \{a,b\}$ are two different environments. We define the following DGP for the variance shifted VAR(1) process:
+
+$$
+x^a_{1,t} = 0.2x^a_{1,t-1} + 0.7x^a_{3,t-1} + N(0, 1)\\ 
+x^a_{2,t} = 0.2x^a_{2,t-1} + N(0, 1)\\ 
+x^a_{3,t} = 0.7x^a_{1,t-1} + 0.2x^a_{2,t-1} + N(0, 1)\\ 
+$$
+
+$$
+x^b_{1,t} = 0.2x^b_{1,t-1} + 0.7x^b_{3,t-1} + N(0, 1)\\ 
+x^b_{2,t} = 0.2x^b_{2,t-1} + N(0, 1)\\ 
+x^b_{3,t} = 0.7x^b_{1,t-1} + 0.2x^a_{2,t-1} + N(0, 3)\\ 
+$$
+
+Thus, the SCM of $x_{1,t}$ is the same regardless of $e$ but there is a variance shift between the environments caused by a change in distribution in $x_{3,t-1}$.
+
+Below we will sample from the above model:
+
+```{r}
+
+set.seed(1)
+n <- na + nb
+
+x1 <- matrix(data = NA, nrow = n, ncol = 1)
+x2 <- matrix(data = NA, nrow = n, ncol = 1)
+x3 <- matrix(data = NA, nrow = n, ncol = 1)
+
+for (i in 1:n){
+  
+  # initialize all series
+  if (i == 1){
+    x1[i,] <- rnorm(n = 1, mean = 0, sd = 1)
+    x2[i,] <- rnorm(n = 1, mean = 0, sd = 1)
+    x3[i,] <- rnorm(n = 1, mean = 0, sd = 1)
+    next
+  }
+  
+  # sample time series iteratively conditioned on each environment
+  if (i <= na){
+    x1[i,] <- 0.2*x1[i-1,] + 0.7*x3[i-1,] + rnorm(n = 1, mean = 0, sd = 1)
+    x2[i,] <- 0.2*x2[i-1,] + rnorm(n = 1, mean = 0, sd = 1)
+    x3[i,] <- 0.7*x1[i-1,] + 0.2*x2[i-1,] + rnorm(n = 1, mean = 0, sd = 1)
+  }
+  else{
+    x1[i,] <- 0.2*x1[i-1,] + 0.7*x3[i-1,] + rnorm(n = 1, mean = 0, sd = 1)
+    x2[i,] <- 0.2*x2[i-1,] + rnorm(n = 1, mean = 0, sd = 1)
+    x3[i,] <- 0.7*x1[i-1,] + 0.2*x2[i-1,] + rnorm(n = 1, mean = 0, sd = 3)
+  }
+  
+}
+
+var_sim_shifted <- cbind(x1, x2, x3)
+ts.plot(var_sim_shifted, type="l", col=c(1, 2, 3))
+```
+Here are the autocorrelation functions of the raw series
+
+```{r}
+for (i in 1:dim(var_sim_shifted)[2]){
+  print(paste0("x", i))
+  ggtsdisplay(var_sim_shifted[, i])
+}
+```
+
+and the autocorrelation of the square of the series
+
+```{r}
+for (i in 1:dim(var_sim_shifted)[2]){
+  print(paste0("x", i))
+  ggtsdisplay(var_sim_shifted[, i]^2)
+}
+```
+
+From the above ACF and PACFs we can see that the stationarity property was broken by introducing the shift in variance on $x_{3,t}$.
+
+Finally, we run seqICP on the new dataset:
+
+```{r}
+var_sim_shifted_df <- var_sim_shifted %>% as.data.table()
+colnames(var_sim_shifted_df) <- c("x1", "x2", "x3")
+varnames <- colnames(var_sim_shifted_df)
+
+Ss <- list()
+Sdetails <- list()
+for (vn in varnames){
+  X <- var_sim_shifted_df %>% dplyr::select(-one_of(vn))
+  y <- var_sim_shifted_df %>% dplyr::select(one_of(vn))
+  
+  output <- seqICP(X=X, Y=y, model = "ar", stopIfEmpty = FALSE, silent = TRUE, )
+  Sdetails[[vn]] <- output
+  
+  print(paste0("Target: ", vn, " Features: ", paste(colnames(X), collapse = " ")))
+  summary(output)
+}
+```
+
+
+As we can see, seqICP was not able to identify the invariant set correctly for the variance shifted VAR(1) process.
+
+### Variance Shifted SVAR(1) (Model C of section 6 from Pfister et al. (2018))
+
+We hypothesize that the reason why seqICP was not able to find the correct set of causal parents is because the original DGP must have at least one contemporaneous relationship. This scenario is precisely the context of structural vector autoregressive models (SVAR).
+
+In this context, we will try to artificially introduce a variance shift into the SVAR(1) process we defined before.
+
+To do so, recall that $e \in \{a,b\}$ are two different environments. We define the following DGP for the variance shifted SVAR(1) process:
+
+$$
+x^a_{1,t} = 0.7x^a_{3,t} + 0.5x^a_{2,t-1} + N(0, 1)\\ 
+x^a_{2,t} = 0.2x^a_{2,t-1} + N(0, 1)\\ 
+x^a_{3,t} = 0.2x^a_{2,t} + N(0, 1)\\ 
+$$
+
+$$
+x^b_{1,t} = 0.7x^b_{3,t} + 0.5x^a_{2,t-1} + N(0, 1)\\ 
+x^b_{2,t} = 0.2x^b_{2,t-1} + N(0, 1)\\ 
+x^b_{3,t} = 0.2x^a_{2,t} + N(0, 3)\\ 
+$$
+
+It can be seen by the above equations that $x_{1,t}$ depends on $x_{3,t}$. Below we simulate from this process:
+
+```{r}
+
+set.seed(1)
+na <- 1000
+nb <- 1000
+n <- na + nb
+
+x1 <- matrix(data = NA, nrow = n, ncol = 1)
+x2 <- matrix(data = NA, nrow = n, ncol = 1)
+x3 <- matrix(data = NA, nrow = n, ncol = 1)
+
+for (i in 1:n){
+  
+  # initialize all series
+  if (i == 1){
+    x1[i,] <- rnorm(n = 1, mean = 0, sd = 1)
+    x2[i,] <- rnorm(n = 1, mean = 0, sd = 1)
+    x3[i,] <- rnorm(n = 1, mean = 0, sd = 1)
+    next
+  }
+  
+  # sample time series iteratively conditioned on each environment
+  if (i <= na){
+    x2[i,] <- 0.2*x2[i-1,] + rnorm(n = 1, mean = 0, sd = 1)
+    x3[i,] <- 0.2*x2[i,] + rnorm(n = 1, mean = 0, sd = 1)
+    x1[i,] <- 0.7*x3[i,] + 0.5*x2[i-1,] + rnorm(n = 1, mean = 0, sd = 1)
+  }
+  else{
+    x2[i,] <- 0.2*x2[i-1,] + rnorm(n = 1, mean = 0, sd = 1)
+    x3[i,] <- 0.2*x2[i,] + rnorm(n = 1, mean = 0, sd = 3)
+    x1[i,] <- 0.7*x3[i,] + 0.5*x2[i-1,] + rnorm(n = 1, mean = 0, sd = 1)
+  }
+  
+}
+
+var_sim_shifted2 <- cbind(x1, x2, x3)
+ts.plot(var_sim_shifted2, type="l", col=c(1, 2, 3))
+```
+
+Here are the autocorrelation functions of the raw series
+
+```{r}
+for (i in 1:dim(var_sim_shifted2)[2]){
+  print(paste0("x", i))
+  ggtsdisplay(var_sim_shifted2[, i])
+}
+```
+
+and the autocorrelation of the square of the series
+
+```{r}
+for (i in 1:dim(var_sim_shifted2)[2]){
+  print(paste0("x", i))
+  ggtsdisplay(var_sim_shifted2[, i]^2)
+}
+```
+
+Finally, we run seqICP on the new dataset:
+
+```{r}
+var_sim_shifted_df2 <- var_sim_shifted2 %>% as.data.table()
+colnames(var_sim_shifted_df2) <- c("x1", "x2", "x3")
+varnames <- colnames(var_sim_shifted_df2)
+
+Ss <- list()
+Sdetails <- list()
+for (vn in varnames){
+  X <- var_sim_shifted_df2 %>% dplyr::select(-one_of(vn))
+  y <- var_sim_shifted_df2 %>% dplyr::select(one_of(vn))
+  
+  output <- seqICP(X=X, Y=y, model = "ar", stopIfEmpty = FALSE, silent = TRUE, )
+  Sdetails[[vn]] <- output
+  
+  print(paste0("Target: ", vn, " Features: ", paste(colnames(X), collapse = " ")))
+  summary(output)
+}
+```
+
+
+
+
+
+
