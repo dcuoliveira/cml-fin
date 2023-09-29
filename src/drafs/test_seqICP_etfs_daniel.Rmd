@@ -39,7 +39,7 @@ The Shapiro-Wilk null hypothesis is that there is no difference between your dis
 ```{r}
 etf_names <- c("SPY" ,"XLI" ,"XLE" ,"XLK" ,"XLV", "XLU" ,"XLF" ,"XLY" ,"XLP" ,"XLB" ,"XHB", 
                "DBC" ,"USO" ,"UGA" ,"UNG" ,"SLV" ,"GLD", "TLT" ,"IEF" ,"IEI" ,"SHY" ,"MBB" ,
-               "VCIT", "UUP" ,"FXE" ,"FXB" ,"FXY" ,"FXA" ,"RPI")
+               "VCIT", "UUP" ,"FXE" ,"FXB" ,"FXY" ,"FXA")
 pval_threshold <- 0.05
 
 shapiro_pvals <- list()
