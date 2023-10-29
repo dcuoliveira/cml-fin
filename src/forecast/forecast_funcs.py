@@ -148,7 +148,7 @@ def run_forecast(data: pd.DataFrame,
             pred = pd.DataFrame([{"date": ypred.index[0], "prediction": ypred[0], "true": yt_test.loc[ypred.index[0]][0]}])
             predictions.append(pred)
         else:
-            pred = pd.DataFrame([{"date": ypred.index[0], "prediction": 0, "true": yt_test.loc[ypred.index[0]][0]}])
+            pred = pd.DataFrame([{"date": yt_test.index[-1], "prediction": 0, "true": yt_test.loc[yt_test.index[-1]][0]}])
             predictions.append(pred)
 
     # save predictions
