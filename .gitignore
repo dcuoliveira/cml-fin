@@ -12,3 +12,6 @@
 *.Rhistory
 */.Rhistory
 .Rproj.user
+
+# c
+*.pyc
