@@ -7,6 +7,7 @@ class LassoWrapper():
     def __init__(self, model_params={'fit_intercept': True, 'max_iter': 100000}):
 
         # find optimal lambda according to hastie and tibshirani (2010)
+        ## Friedman, J., Hastie, T., & Tibshirani, R. (2010). Regularization paths for generalized linear models via coordinate descent. Journal of statistical software, 33(1), 1.
         data = pd.read_csv(os.path.join(os.path.dirname(os.path.dirname(__file__)), 'data', 'inputs', 'etfs_macro_large.csv'))
         data["date"] = pd.to_datetime(data["date"])
         data = data.set_index("date")
