@@ -4,6 +4,7 @@ import os
 
 from forecast.forecast_funcs import run_forecast
 from metadata.etfs import etfs_large, etfs_small
+from utils.conn_data import save_pickle
 
 parser = argparse.ArgumentParser(description="Run forecast.")
 parser.add_argument("--estimation_window", type=int, default=12 * 8)
@@ -15,6 +16,7 @@ parser.add_argument("--incercept", type=bool, default=True)
 parser.add_argument("--fs_method", type=str, default="lasso")
 parser.add_argument("--cv_type", type=str, default="cv")
 parser.add_argument("--inputs_path", type=str, default=os.path.join(os.path.dirname(__file__), "data", "inputs"))
+parser.add_argument("--outputs_path", type=str, default=os.path.join(os.path.dirname(__file__), "data", "outputs"))
 
 if __name__ == "__main__":
 
@@ -46,3 +48,16 @@ if __name__ == "__main__":
                                incercept=args.incercept,
                                fs_method=args.fs_method,
                                cv_type=args.cv_type)
+
+        results['args'] = args
+
+        # check if results folder exists
+        if not os.path.exists(os.path.join(args.outputs_path, args.fs_method)):
+            os.makedirs(os.path.join(args.outputs_path, args.fs_method))
+        
+        # save results
+        save_path = os.path.join(args.outputs_path, args.fs_method, "{}_{}_{}_{}.pickle".format(target,
+                                                                                                args.estimation_window,
+                                                                                                args.correl_window,
+                                                                                                args.p))
+        save_pickle(path=save_path, obj=results)
