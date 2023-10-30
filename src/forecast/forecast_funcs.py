@@ -159,4 +159,7 @@ def run_forecast(data: pd.DataFrame,
     # save parents of target
     parents_of_targets_df = pd.concat(parents_of_target, axis=0)
 
-    return predictions_df, parents_of_targets_df
+    results = {"predictions": predictions_df,
+                "parents_of_target": parents_of_targets_df}
+
+    return results
