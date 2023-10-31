@@ -4,6 +4,8 @@ from sklearn.model_selection import TimeSeriesSplit, KFold
 from sklearn.model_selection import RandomizedSearchCV, GridSearchCV
 from sklearn.metrics import make_scorer, mean_squared_error
 import statsmodels.api as sm
+import lingam
+import numpy as np
 
 from models.ClusteringModels import ClusteringModels
 from models.ModelClasses import LassoWrapper
@@ -87,7 +89,40 @@ def run_forecast(data: pd.DataFrame,
         yt_test = test_df[[target]]
 
         if fs_method == "var-lingam":
-            pass
+
+            data_train = pd.concat([yt_train, Xt_train], axis=1)
+            data_test = pd.concat([yt_test, Xt_test], axis=1)
+
+            # run VAR-LiNGAM
+            var_lingam = lingam.VARLiNGAM(lags=p)
+            var_lingam_fit = var_lingam.fit(data_train)
+
+            # build labels - ONLY WORKS FOR k=1
+            labels = {}
+            for i in range(p+1):
+
+                var_names = []
+                for colname in data_train.columns:
+                        if i == 0:
+                            var_names.append(f"{colname}(t)")
+                        else:
+                            var_names.append(f"{colname}(t-{i})")
+                labels[f'labels{i}'] = var_names
+
+                if i != 0:
+                    B = var_lingam_fit.adjacency_matrices_[i]
+                    B_df = pd.DataFrame(B, columns=labels[f'labels{i}'] , index=labels['labels0'] )
+                    selected_variables = list(B_df.loc["{target}(t)".format(target=target)][np.abs(B_df.loc["{target}(t)".format(target=target)]) > beta_threshold].index)
+
+            # create lags of Xt variables
+            for c in data_train.columns:
+                for lag in range(1, p + 1):
+                    data_train["{}(t-{})".format(c, lag)] = data_train[c].shift(lag)
+                    data_test["{}(t-{})".format(c, lag)] = data_test[c].shift(lag)
+                
+                data_train.drop(c, axis=1, inplace=True)
+            Xt_train = data_train.dropna()
+            Xt_test = data_test.dropna()
 
         elif fs_method == "lasso":
             
