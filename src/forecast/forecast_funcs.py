@@ -6,6 +6,7 @@ from sklearn.metrics import make_scorer, mean_squared_error
 import statsmodels.api as sm
 import lingam
 import numpy as np
+from statsmodels.tsa.stattools import grangercausalitytests
 
 from models.ClusteringModels import ClusteringModels
 from models.ModelClasses import LassoWrapper
@@ -50,6 +51,7 @@ def run_forecast(data: pd.DataFrame,
                  correl_window: int,
                  p: int,
                  beta_threshold: float,
+                 pval_threshold: float,
                  incercept: bool,
                  fs_method: str,
                  cv_type: str):
@@ -158,6 +160,33 @@ def run_forecast(data: pd.DataFrame,
 
             # select variables with beta > threshold
             selected_variables = list(B1_df[B1_df > beta_threshold].dropna().index)
+        elif fs_method == "granger":
+
+            data_train = pd.concat([yt_train, Xt_train], axis=1)
+            data_test = pd.concat([yt_test, Xt_test], axis=1)
+
+            selected_variables = []
+            # run grander causality test for each feature
+            for colname in data_train.columns:
+                test_result = grangercausalitytests(x=data_train[[target, colname]], maxlag=p, verbose=False, addconst=incercept)
+
+                # select variables with p-value < 0.05
+                for lag in test_result.keys():
+                    pval = test_result[lag][0]['ssr_ftest'][1]
+                    if pval <= pval_threshold:
+                        selected_variables += [f"{colname}(t-{lag})"]
+
+            # create lags of Xt variables
+            for c in data_train.columns:
+                for lag in range(1, p + 1):
+                    data_train["{}(t-{})".format(c, lag)] = data_train[c].shift(lag)
+                    data_test["{}(t-{})".format(c, lag)] = data_test[c].shift(lag)
+                
+                data_train.drop(c, axis=1, inplace=True)
+            Xt_train = data_train.dropna()
+            Xt_test = data_test.dropna()
+        else:
+            raise Exception("fs method not registered")
 
         parents_of_target.append(pd.DataFrame(1, index=selected_variables, columns=[Xt_test.index[-1]]).T)
         if len(selected_variables) != 0:

@@ -11,9 +11,10 @@ parser.add_argument("--estimation_window", type=int, default=12 * 8)
 parser.add_argument("--p", type=int, default=1)
 parser.add_argument("--correl_window", type=int, default=1000)
 parser.add_argument("--beta_threshold", type=float, default=0)
+parser.add_argument("--pval_threshold", type=float, default=0.05)
 parser.add_argument("--fix_start", type=bool, default=True)
 parser.add_argument("--incercept", type=bool, default=True)
-parser.add_argument("--fs_method", type=str, default="lasso")
+parser.add_argument("--fs_method", type=str, default="granger")
 parser.add_argument("--cv_type", type=str, default="cv")
 parser.add_argument("--inputs_path", type=str, default=os.path.join(os.path.dirname(__file__), "data", "inputs"))
 parser.add_argument("--outputs_path", type=str, default=os.path.join(os.path.dirname(__file__), "data", "outputs"))
@@ -45,6 +46,7 @@ if __name__ == "__main__":
                                correl_window=args.correl_window,
                                p=args.p,
                                beta_threshold=args.beta_threshold,
+                               pval_threshold=args.pval_threshold,
                                incercept=args.incercept,
                                fs_method=args.fs_method,
                                cv_type=args.cv_type)
