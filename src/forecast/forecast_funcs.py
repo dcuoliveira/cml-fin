@@ -126,6 +126,9 @@ def run_forecast(data: pd.DataFrame,
 
         elif fs_method == "lasso":
             
+            Xt_train = pd.concat([yt_train, Xt_train], axis=1)
+            Xt_test = pd.concat([yt_test, Xt_test], axis=1)
+
             # create lags of Xt variables
             for c in Xt_train.columns:
                 for lag in range(1, p + 1):
