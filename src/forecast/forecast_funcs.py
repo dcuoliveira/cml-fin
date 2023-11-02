@@ -7,6 +7,7 @@ import statsmodels.api as sm
 import lingam
 import numpy as np
 from statsmodels.tsa.stattools import grangercausalitytests
+from statsmodels.tsa.api import VAR
 
 from models.ClusteringModels import ClusteringModels
 from models.ModelClasses import LassoWrapper
@@ -91,7 +92,6 @@ def run_forecast(data: pd.DataFrame,
         yt_test = test_df[[target]]
 
         if fs_method == "var-lingam":
-
             data_train = pd.concat([yt_train, Xt_train], axis=1)
             data_test = pd.concat([yt_test, Xt_test], axis=1)
 
@@ -127,7 +127,6 @@ def run_forecast(data: pd.DataFrame,
             Xt_test = data_test.dropna()
 
         elif fs_method == "lasso":
-            
             Xt_train = pd.concat([yt_train, Xt_train], axis=1)
             Xt_test = pd.concat([yt_test, Xt_test], axis=1)
 
@@ -160,8 +159,7 @@ def run_forecast(data: pd.DataFrame,
 
             # select variables with beta > threshold
             selected_variables = list(B1_df[B1_df > beta_threshold].dropna().index)
-        elif fs_method == "granger":
-
+        elif fs_method == "pairwise-granger":
             data_train = pd.concat([yt_train, Xt_train], axis=1)
             data_test = pd.concat([yt_test, Xt_test], axis=1)
 
@@ -175,6 +173,31 @@ def run_forecast(data: pd.DataFrame,
                     pval = test_result[lag][0]['ssr_ftest'][1]
                     if pval <= pval_threshold:
                         selected_variables += [f"{colname}(t-{lag})"]
+
+            # create lags of Xt variables
+            for c in data_train.columns:
+                for lag in range(1, p + 1):
+                    data_train["{}(t-{})".format(c, lag)] = data_train[c].shift(lag)
+                    data_test["{}(t-{})".format(c, lag)] = data_test[c].shift(lag)
+                
+                data_train.drop(c, axis=1, inplace=True)
+            Xt_train = data_train.dropna()
+            Xt_test = data_test.dropna()
+        elif fs_method == "multivariate-granger":
+            data_train = pd.concat([yt_train, Xt_train], axis=1)
+            data_test = pd.concat([yt_test, Xt_test], axis=1)
+
+            # run grander causality test for each feature
+            var_fit = VAR(data_train).fit(maxlags=p)
+
+            # run grander causality test for each feature
+            selected_variables = []
+            for colname in data_train.columns:
+                if colname != target:
+                    test_result = var_fit.test_causality(target, [colname], kind='f', signif=pval_threshold)
+                    if test_result.pvalue <= pval_threshold:
+                        for lag in range(1, p + 1):
+                            selected_variables += [f"{colname}(t-{lag})"]               
 
             # create lags of Xt variables
             for c in data_train.columns:
