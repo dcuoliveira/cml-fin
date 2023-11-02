@@ -211,8 +211,15 @@ def run_forecast(data: pd.DataFrame,
         else:
             raise Exception("fs method not registered")
 
-        parents_of_target.append(pd.DataFrame(1, index=selected_variables, columns=[Xt_test.index[-1]]).T)
+        selected_variables_df = pd.DataFrame(1, index=selected_variables, columns=[Xt_test.index[-1]]).T
         if len(selected_variables) != 0:
+
+            # add clusters to parents
+            melted_selected_variables_df = selected_variables_df.reset_index().melt("index").rename(columns={"index": "date"})
+            melted_selected_variables_df["fred"] = [varname.split("(")[0] for varname in melted_selected_variables_df["variable"]]
+            melted_selected_variables_df = pd.merge(melted_selected_variables_df, labelled_clusters[["fred", "cluster"]], how="left", on="fred")
+            parents_of_target.append(melted_selected_variables_df)
+
             Xt_selected_train = []
             Xt_selected_test = []
             for full_vname in selected_variables:
