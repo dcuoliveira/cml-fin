@@ -23,5 +23,6 @@ dependencies:
   - lightgbm
   - seaborn
   - lingam
+  - rpy2
   - pip:
     - ICPy
