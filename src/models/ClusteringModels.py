@@ -22,16 +22,16 @@ class ClusteringModels:
         
         return labelled_clusters
 
-    def compute_clusters(self, data: pd.DataFrame, target: str, clustring_method: str):
+    def compute_clusters(self, data: pd.DataFrame, target: str, clustering_method: str):
 
         input = data.drop([target], axis=1).corr()
         self.feature_names = list(input.columns)
 
-        if clustring_method == "kmeans":
+        if clustering_method == "kmeans":
             clusters = self.kmeans(input=input)
             return clusters
         else:
-            raise ValueError("clustring_method not supported")
+            raise ValueError("clustering_method not supported")
     
     def compute_within_cluster_corr_rank(self,
                                          data: pd.DataFrame,
