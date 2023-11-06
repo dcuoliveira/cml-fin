@@ -7,15 +7,17 @@ from metadata.etfs import etfs_large, etfs_small
 from utils.conn_data import save_pickle
 
 parser = argparse.ArgumentParser(description="Run forecast.")
-parser.add_argument("--estimation_window", type=int, default=12 * 8)
+parser.add_argument("--estimation_window", type=int, default=12 * 5)
 parser.add_argument("--p", type=int, default=1)
 parser.add_argument("--correl_window", type=int, default=1000)
 parser.add_argument("--beta_threshold", type=float, default=0)
 parser.add_argument("--pval_threshold", type=float, default=0.05)
 parser.add_argument("--fix_start", type=bool, default=True)
 parser.add_argument("--incercept", type=bool, default=True)
-parser.add_argument("--fs_method", type=str, default="lasso")
+parser.add_argument("--fs_method", type=str, default="var-lingam")
 parser.add_argument("--cv_type", type=str, default="cv")
+parser.add_argument("--clustering_method", type=str, default="kmeans")
+parser.add_argument("--data_name", type=str, default="etfs_macro_large")
 parser.add_argument("--inputs_path", type=str, default=os.path.join(os.path.dirname(__file__), "data", "inputs"))
 parser.add_argument("--outputs_path", type=str, default=os.path.join(os.path.dirname(__file__), "data", "outputs"))
 
@@ -23,7 +25,7 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
-    data = pd.read_csv(os.path.join(args.inputs_path, 'etfs_macro_large.csv'))
+    data = pd.read_csv(os.path.join(args.inputs_path, f'{args.data_name}.csv'))
     
     # fix dates
     data["date"] = pd.to_datetime(data["date"])
@@ -49,17 +51,18 @@ if __name__ == "__main__":
                                pval_threshold=args.pval_threshold,
                                incercept=args.incercept,
                                fs_method=args.fs_method,
-                               cv_type=args.cv_type)
+                               cv_type=args.cv_type,
+                               clustering_method=args.clustering_method)
 
         results['args'] = args
 
         # check if results folder exists
-        if not os.path.exists(os.path.join(args.outputs_path, args.fs_method)):
-            os.makedirs(os.path.join(args.outputs_path, args.fs_method))
+        if not os.path.exists(os.path.join(args.outputs_path, args.fs_method, args.data_name)):
+            os.makedirs(os.path.join(args.outputs_path, args.fs_method, args.data_name))
         
         # save results
-        save_path = os.path.join(args.outputs_path, args.fs_method, "{}_{}_{}_{}.pickle".format(target,
-                                                                                                args.estimation_window,
-                                                                                                args.correl_window,
-                                                                                                args.p))
+        save_path = os.path.join(args.outputs_path, args.fs_method, args.data_name, "{}_{}_{}_{}.pickle".format(target,
+                                                                                                                args.estimation_window,
+                                                                                                                args.correl_window,
+                                                                                                                args.p))
         save_pickle(path=save_path, obj=results)
