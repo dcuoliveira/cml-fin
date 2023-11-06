@@ -55,7 +55,8 @@ def run_forecast(data: pd.DataFrame,
                  pval_threshold: float,
                  incercept: bool,
                  fs_method: str,
-                 cv_type: str):
+                 cv_type: str,
+                 clustering_method: str):
     
     cm = ClusteringModels()
 
@@ -71,7 +72,7 @@ def run_forecast(data: pd.DataFrame,
         train_df = data.iloc[start:(estimation_window + step), :]
 
         # compute within c1luster correlation
-        clusters = cm.compute_clusters(data=data, target=target, clustring_method="kmeans")  
+        clusters = cm.compute_clusters(data=data, target=target, clustering_method=clustering_method)  
         labelled_clusters = cm.add_cluster_description(clusters=clusters)
         ranks = cm.compute_within_cluster_corr_rank(data=train_df,
                                                     target=target,
