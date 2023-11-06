@@ -16,11 +16,11 @@ if __name__ == "__main__":
     # resample to business day frequency and forward fill
     fred_data["date"] = pd.to_datetime(fred_data["date"])
     fred_data.set_index("date", inplace=True)
-    fred_data = fred_data.resample("B").ffill()
+    fred_data = fred_data.resample("B").last().ffill()
 
     etfs_data["date"] = pd.to_datetime(etfs_data["date"])
     etfs_data.set_index("date", inplace=True)
-    etfs_data = etfs_data.resample("B").ffill()
+    etfs_data = etfs_data.resample("B").last().ffill()
 
     # compute log returns
     returns_data = np.log(etfs_data).diff()
