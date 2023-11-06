@@ -126,7 +126,6 @@ def run_forecast(data: pd.DataFrame,
                 data_train.drop(c, axis=1, inplace=True)
             Xt_train = data_train.dropna()
             Xt_test = data_test.dropna()
-
         elif fs_method == "lasso":
             Xt_train = pd.concat([yt_train, Xt_train], axis=1)
             Xt_test = pd.concat([yt_test, Xt_test], axis=1)
