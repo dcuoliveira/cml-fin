@@ -5,7 +5,7 @@ channels:
   - conda-forge
   - pytorch
 dependencies:
-  - python=3.10.0
+  - python=3.7.0
   - pip
   - mkl < 2022
   - pandas
@@ -22,7 +22,7 @@ dependencies:
   - statsmodels
   - lightgbm
   - seaborn
-  - lingam
   - rpy2
   - pip:
     - ICPy
+    - lingam
