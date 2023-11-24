@@ -10,7 +10,7 @@ class ClusteringModels:
     def kmeans(self, input: pd.DataFrame, n_clusters: int=20):
 
         # compute forward looking cluster of the correlation matrix
-        clusters = KMeans(n_clusters=n_clusters, random_state=0, n_init="auto").fit(input)
+        clusters = KMeans(n_clusters=n_clusters, random_state=0).fit(input)
 
         return clusters
     
