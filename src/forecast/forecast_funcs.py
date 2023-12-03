@@ -62,6 +62,7 @@ def run_forecast(data: pd.DataFrame,
 
     predictions = []
     parents_of_target = []
+    dags = {}
     for step in tqdm(range(0, len(data) - estimation_window, 1), total=len(data) - estimation_window, desc="rolling {}: {}".format(fs_method, target)):
 
         if fix_start or (step == 0):
@@ -99,6 +100,10 @@ def run_forecast(data: pd.DataFrame,
             # run VAR-LiNGAM
             var_lingam = lingam.VARLiNGAM(lags=p)
             var_lingam_fit = var_lingam.fit(data_train)
+
+            # save dags
+            dict_ = {Xt_train.index[-1].strftime("%Y%m%d"): {"dag": var_lingam_fit.adjacency_matrices_, "threshold": beta_threshold}}
+            dags.update(dict_)
 
             # build labels - ONLY WORKS FOR k=1
             labels = {}
@@ -257,6 +262,7 @@ def run_forecast(data: pd.DataFrame,
     parents_of_targets_df = pd.concat(parents_of_target, axis=0)
 
     results = {"predictions": predictions_df,
-                "parents_of_target": parents_of_targets_df}
+                "parents_of_target": parents_of_targets_df,
+                "dags": dags}
 
     return results
