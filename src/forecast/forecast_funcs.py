@@ -101,10 +101,6 @@ def run_forecast(data: pd.DataFrame,
             var_lingam = lingam.VARLiNGAM(lags=p)
             var_lingam_fit = var_lingam.fit(data_train)
 
-            # save dags
-            dict_ = {Xt_train.index[-1].strftime("%Y%m%d"): {"dag": var_lingam_fit.adjacency_matrices_, "threshold": beta_threshold}}
-            dags.update(dict_)
-
             # build labels - ONLY WORKS FOR k=1
             labels = {}
             for i in range(p+1):
@@ -121,6 +117,15 @@ def run_forecast(data: pd.DataFrame,
                     B = var_lingam_fit.adjacency_matrices_[i]
                     B_df = pd.DataFrame(B, columns=labels[f'labels{i}'] , index=labels['labels0'] )
                     selected_variables = list(B_df.loc["{target}(t)".format(target=target)][np.abs(B_df.loc["{target}(t)".format(target=target)]) > beta_threshold].index)
+
+            # save dags
+            dict_ = {Xt_train.index[-1].strftime("%Y%m%d"): {
+                "dag": var_lingam_fit.adjacency_matrices_, 
+                "threshold": beta_threshold,
+                "labels": labels,
+                }
+            }
+            dags.update(dict_)
 
             # create lags of Xt variables
             for c in data_train.columns:
