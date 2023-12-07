@@ -14,6 +14,13 @@ class ClusteringModels:
 
         return clusters
     
+    def spectral(self, input: pd.DataFrame, n_clusters: int=20):
+
+        # compute forward looking cluster of the correlation matrix
+        clusters = spectral_mathod(n_clusters = n_clusters).fit((input + 1).to_numpy())
+
+        return clusters
+    
     def add_cluster_description(self, clusters):
         
         labelled_clusters = pd.DataFrame({"fred": self.feature_names, "cluster": clusters.labels_})
@@ -29,9 +36,12 @@ class ClusteringModels:
 
         if clustering_method == "kmeans":
             clusters = self.kmeans(input=input)
-            return clusters
+        elif clustering_method == "spectral":
+            clusters = self.spectral(input = input)
         else:
             raise ValueError("clustering_method not supported")
+        
+        return clusters
     
     def compute_within_cluster_corr_rank(self,
                                          data: pd.DataFrame,
@@ -67,3 +77,140 @@ class ClusteringModels:
         final_rank_df = pd.concat(rank_list, axis=1)
 
         return final_rank_df
+
+
+
+
+class spectral_mathod:
+    def __init__(self, n_clusters):
+        self.n_clusters = n_clusters
+        
+        
+    def fit(self, A):
+        self.labels_, _ = spectral_clustering(A, self.n_clusters, symmetrize = False)
+        return self
+        
+    
+
+def A_Hermitian(A):
+    '''
+    Given an adjacency matrix, compute its Hermitian adjacency.
+    H_uv = (A_uv - A_vu) i
+    '''
+    A = (A - A.T) * 1j
+    return A
+   
+
+def symmetrize_matrix(M, method):
+    '''
+    Symmetrize given matrix
+    '''
+    if method == 'M+MT' or method == 'MT+M':
+        M = M + M.T
+    elif method == 'MMT':
+        M = np.matmul(M, M.T)
+    elif method == 'MTM':
+        M = np.matmul(M.T, M)
+    elif method == 'MTM+MMT' or method == 'MMT+MTM':
+        M = np.matmul(M, M.T) + np.matmul(M.T, M)
+    return M
+
+
+def Laplacian(A, symmetrize, normalize, remove_diag):
+    '''
+    Compute Laplacian of the given matrix A.
+    A is an (weighted) adjacency matrix of an unsigned network, that is Aij >= 0 for all i,j
+
+    Parameters
+    ----------
+    A : np.array
+        N x N matrix.
+    symmetric : str, optional
+        If sys/symmetric, return D^(-1/2) L D^(-1/2), If simple, return D^(-1) L. 
+        If None/False return L without normalization
+
+    Returns
+    -------
+    L : np.array
+        Normalized matrix.
+    '''
+    assert A.shape[0] == A.shape[1]
+    assert (A >= 0).all().all()
+    
+    if symmetrize:
+        A = symmetrize_matrix(A, symmetrize)
+        
+    if remove_diag:
+        np.fill_diagonal(A, 0)
+    
+    D = A.sum(axis = 1)
+    L = np.diag(D) - A 
+    
+    if normalize:
+        if normalize.startswith('sym'):
+            D = np.sqrt(D)
+            L = (L.T / D).T / D
+        elif normalize == 'rw':
+            L = (L.T / D).T
+        else:
+            raise NotImplementedError
+                
+    return L
+
+
+def spectral_clustering(A, n_clusters, n_eig = None, symmetrize = 'M+MT', normalize = 'rw', init = 'k-means++', random_state = None, n_init = 500):
+    '''
+    Spectral Clustering on weighted, undirected and unsigned graph A
+
+    Parameters
+    ----------
+    A : np.array
+        (Weighted) Adjacency matrix of A.
+    n_clusters : int
+        Number of output clusters.
+    n_eig : int, optional
+        Number of top eigenvalues to choose. The default is 10.
+
+    Returns
+    -------
+    clusters : np.array
+        Labels of clusters.
+
+    '''
+    
+    ''' 1. Compute Laplacian matrix '''
+    L = Laplacian(A, symmetrize, normalize, True)
+
+    ''' 2. Spectural deconposition of L, get to n eigenvalues and coreesponding eigenvectors '''
+    eig_values, eig_matrix = np.linalg.eigh(L)
+
+    
+    #assert (eig_values >= - 1e-10).all()  
+    if not n_eig:
+        n_eig = n_clusters
+    
+        
+    # Small eigenvalues
+    eig_values, eig_matrix = eig_values[ : n_eig], eig_matrix[:, : n_eig]
+    
+    
+    eig_matrix = (eig_matrix.T / np.sqrt((eig_matrix ** 2).sum(axis = 1))).T
+    
+    ''' 3. Clustering on rows of eigenvectos with K means '''
+    if isinstance(init, np.ndarray):
+        n_clusters = len(set(init))
+        n_init = 1
+        print(pd.DataFrame(eig_matrix))
+        init = pd.DataFrame(eig_matrix).groupby(init).mean()
+
+    
+    kmeans = KMeans(n_clusters = n_clusters, init = init, random_state = random_state, n_init = n_init)
+    clusters = kmeans.fit(eig_matrix).labels_
+    
+    return clusters, (eig_values, eig_matrix)
+
+
+
+
+
+
