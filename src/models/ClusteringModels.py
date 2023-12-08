@@ -38,7 +38,7 @@ class ClusteringModels:
                          data: pd.DataFrame, 
                          target: str, 
                          clustering_method: str, 
-                         n_clusters: int = 0, 
+                         n_clusters: int = 20, 
                          method: str = "spectral",
                          threshold: float = 0.8):
 
@@ -48,6 +48,8 @@ class ClusteringModels:
         if not n_clusters:
             if method == "spectral":
                 n_clusters = threshold_variance_explained(input, threshold)
+            else:
+                raise ValueError("n_clusters method not supported")
         
         if clustering_method == "kmeans":
             clusters = self.kmeans(input=input,  n_clusters = n_clusters)
