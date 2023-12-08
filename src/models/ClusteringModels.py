@@ -2,10 +2,13 @@ from sklearn.cluster import KMeans
 import pandas as pd
 import os
 import numpy as np
+from sklearn.metrics import silhouette_score
+
 
 class ClusteringModels:
     def __init__(self) -> None:
         self.fred_des = pd.read_csv(os.path.join(os.path.dirname(os.path.dirname(__file__)), 'data', 'utils', 'fredmd_description.csv'), sep=';')
+        
 
     def kmeans(self, input: pd.DataFrame, n_clusters: int=20):
 
@@ -14,10 +17,12 @@ class ClusteringModels:
 
         return clusters
     
-    def spectral(self, input: pd.DataFrame, n_clusters: int=20):
-
+    def spectral(self, input: pd.DataFrame, n_clusters: int=20, signed: bool = False):
+        
+        if not signed:
+            input += 1    
         # compute forward looking cluster of the correlation matrix
-        clusters = spectral_mathod(n_clusters = n_clusters).fit((input + 1).to_numpy())
+        clusters = spectral_mathod(n_clusters = n_clusters).fit((input).to_numpy())
 
         return clusters
     
@@ -29,15 +34,27 @@ class ClusteringModels:
         
         return labelled_clusters
 
-    def compute_clusters(self, data: pd.DataFrame, target: str, clustering_method: str):
+    def compute_clusters(self, 
+                         data: pd.DataFrame, 
+                         target: str, 
+                         clustering_method: str, 
+                         n_clusters: int = 0, 
+                         method: str = "spectral",
+                         threshold: float = 0.8):
 
         input = data.drop([target], axis=1).corr()
         self.feature_names = list(input.columns)
-
+        
+        if not n_clusters:
+            if method == "spectral":
+                n_clusters = threshold_variance_explained(input, threshold)
+        
         if clustering_method == "kmeans":
-            clusters = self.kmeans(input=input)
+            clusters = self.kmeans(input=input,  n_clusters = n_clusters)
         elif clustering_method == "spectral":
-            clusters = self.spectral(input = input)
+            clusters = self.spectral(input = input, n_clusters = n_clusters)
+        elif clustering_method == "signed_spectral":
+            clusters = self.spectral(input = input, n_clusters = n_clusters, signed = True)
         else:
             raise ValueError("clustering_method not supported")
         
@@ -79,18 +96,24 @@ class ClusteringModels:
         return final_rank_df
 
 
+def threshold_variance_explained(A, threshold):
+    assert 0 <= threshold <= 1
+    ratio_expalined, _ = np.linalg.eigh(A)
+    ratio_expalined = ratio_expalined / ratio_expalined.sum()
+    cum_ratio_expalined = ratio_expalined[::-1].cumsum()
+    n_clusters = np.argmax(cum_ratio_expalined >= threshold) + 1
+    return n_clusters
+
 
 
 class spectral_mathod:
     def __init__(self, n_clusters):
         self.n_clusters = n_clusters
         
-        
     def fit(self, A):
         self.labels_, _ = spectral_clustering(A, self.n_clusters, symmetrize = False)
         return self
         
-    
 
 def A_Hermitian(A):
     '''
@@ -143,7 +166,7 @@ def Laplacian(A, symmetrize, normalize, remove_diag):
     if remove_diag:
         np.fill_diagonal(A, 0)
     
-    D = A.sum(axis = 1)
+    D = np.abs(A).sum(axis = 1)
     L = np.diag(D) - A 
     
     if normalize:
