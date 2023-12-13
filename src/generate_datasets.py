@@ -23,7 +23,7 @@ if __name__ == "__main__":
     etfs_data = etfs_data.resample("B").last().ffill()
 
     # compute log returns
-    returns_data = np.log(etfs_data).diff()
+    returns_data = np.log(etfs_data).diff(22)
 
     # compute first non-nan index
     first_non_nan = returns_data.apply(lambda x: x.first_valid_index())
