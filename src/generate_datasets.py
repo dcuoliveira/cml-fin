@@ -29,13 +29,13 @@ if __name__ == "__main__":
     first_non_nan = returns_data.apply(lambda x: x.first_valid_index())
 
     # subset etfs
-    big_etfs_index = list(first_non_nan[first_non_nan <= "2000-01-04"].index)
+    big_etfs_index = list(first_non_nan[first_non_nan <= "2000-02-02"].index)
     big_returns_data = returns_data[big_etfs_index].dropna()
 
-    mid_etfs_index = list(first_non_nan[first_non_nan <= "2007-04-19"].index)
+    mid_etfs_index = list(first_non_nan[first_non_nan <= "2007-05-19"].index)
     mid_returns_data = returns_data[mid_etfs_index].dropna()
 
-    small_etfs_index = list(first_non_nan[first_non_nan <= "2011-11-16"].index)
+    small_etfs_index = list(first_non_nan[first_non_nan <= "2011-12-16"].index)
     small_returns_data = returns_data[small_etfs_index].dropna()
 
     # merge datasets
