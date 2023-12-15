@@ -8,9 +8,15 @@ import lingam
 import numpy as np
 from statsmodels.tsa.stattools import grangercausalitytests
 from statsmodels.tsa.api import VAR
+from causalnex.structure.dynotears import from_pandas_dynamic
+import rpy2.robjects as robjects
+from rpy2.robjects import pandas2ri
+from rpy2.robjects import numpy2ri
 
 from models.ClusteringModels import ClusteringModels
 from models.ModelClasses import LassoWrapper
+
+pandas2ri.activate()
 
 def cv_opt(X, y, model_wrapper, cv_type, n_splits, n_iter, seed, verbose, n_jobs, scoring):
 
@@ -86,6 +92,13 @@ def run_forecast(data: pd.DataFrame,
         train_df = train_df[[target] + selected_columns]
         test_df = data[[target] + selected_columns].iloc[(estimation_window + step - p):(estimation_window + step + 1), :]
 
+        # zscore of data
+        mean = train_df.mean()
+        std = train_df.std()
+
+        train_df = (train_df - mean) / std
+        test_df = (test_df - mean) / std
+
         # subset data into train and test
         Xt_train = train_df.drop([target], axis=1)
         yt_train = train_df[[target]]
@@ -101,7 +114,7 @@ def run_forecast(data: pd.DataFrame,
             var_lingam = lingam.VARLiNGAM(lags=p)
             var_lingam_fit = var_lingam.fit(data_train)
 
-            # build labels - ONLY WORKS FOR k=1
+            # build labels
             labels = {}
             for i in range(p+1):
 
@@ -218,6 +231,110 @@ def run_forecast(data: pd.DataFrame,
                 data_train.drop(c, axis=1, inplace=True)
             Xt_train = data_train.dropna()
             Xt_test = data_test.dropna()
+        elif fs_method == "dynotears":
+            data_train = pd.concat([yt_train, Xt_train], axis=1)
+            data_test = pd.concat([yt_test, Xt_test], axis=1)
+
+            dates = data_train.index
+            target_data = data_train.reset_index(drop=True)
+
+            # run DYNOTEARS
+            dynotears = from_pandas_dynamic(target_data, p=p)
+
+            edges_df = pd.DataFrame(dynotears.edges(), columns=['to', 'from'])[['from', 'to']]
+            edges_df["from_lag"] = edges_df["from"].apply(lambda x: int(x.split("_")[1][-1]))
+            edges_df["to_lag"] = edges_df["to"].apply(lambda x: int(x.split("_")[1][-1]))
+
+            edges_df["new_from"] = edges_df["from"].apply(lambda x: x.split("_")[0])
+            edges_df["new_to"] = edges_df["to"].apply(lambda x: x.split("_")[0])
+
+            # select valid edges
+            edges_df = edges_df.loc[(edges_df["from_lag"] == 0) & (edges_df["to_lag"] != 0)]
+
+            # build adjacency matrix
+            adj = []
+            for from_node in edges_df.loc[edges_df["from_lag"] == 0]["new_from"].unique():
+                tmp_from = edges_df.loc[edges_df["new_from"] == from_node]
+                col_names = []
+                for idx, row in tmp_from.iterrows():
+                    col_names.append(f"{row['new_to']}(t-{row['to_lag']})")
+                row_name = from_node
+
+                tmp_adj = pd.DataFrame(1, columns=col_names, index=[f"{row_name}(t)"])
+                adj.append(tmp_adj)
+            adj_df = pd.concat(adj).fillna(0)
+
+            if f"{target}(t)" in adj_df.index:
+                selected_variables = list(adj_df[adj_df.index == f"{target}(t)"][adj_df[adj_df.index == f"{target}(t)"] != 0].dropna(axis=1).columns)
+            else:
+                selected_variables = []
+
+            # # save dags
+            # dict_ = {Xt_train.index[-1].strftime("%Y%m%d"): {
+            #     "dag": adj_df, 
+            #     "threshold": beta_threshold,
+            #     "labels": labels,
+            #     }
+            # }
+            # dags.update(dict_)
+
+            # create lags of Xt variables
+            for c in data_train.columns:
+                for lag in range(1, p + 1):
+                    data_train["{}(t-{})".format(c, lag)] = data_train[c].shift(lag)
+                    data_test["{}(t-{})".format(c, lag)] = data_test[c].shift(lag)
+                
+                data_train.drop(c, axis=1, inplace=True)
+            Xt_train = data_train.dropna()
+            Xt_test = data_test.dropna()
+        elif fs_method == "seqICP":
+            data_train = pd.concat([yt_train, Xt_train], axis=1)
+            data_test = pd.concat([yt_test, Xt_test], axis=1)
+            
+            # convert dataframe to R objects
+            X_train = data_train.drop(target, axis=1).values
+            y_train = data_train[target]
+
+            X_train_r = numpy2ri.numpy2ri(X_train)
+            y_train_r = numpy2ri.numpy2ri(y_train)
+
+            # pass inputs to global variables
+            robjects.globalenv['Xmatrix'] = X_train_r
+            robjects.globalenv['Y'] = y_train_r
+
+            data_train.shape
+
+            robjects.r(f'''
+                library(seqICP)
+
+                seqICP_result <- seqICP(X = Xmatrix,
+                                        Y = Y,
+                                        max.parents = 5,
+                                        stopIfEmpty = FALSE,
+                                        silent = TRUE)
+                seqICP_summary <- summary(seqICP_result)
+                parent_set <- seqICP_result$parent.set
+
+            ''')
+
+            # retrieve results from seqICP
+            parent_set = robjects.r['parent_set']
+
+            if len(parent_set) != 0:
+                parada = 1
+            else:
+                selected_variables = []
+
+            # create lags of Xt variables
+            for c in data_train.columns:
+                for lag in range(1, p + 1):
+                    data_train["{}(t-{})".format(c, lag)] = data_train[c].shift(lag)
+                    data_test["{}(t-{})".format(c, lag)] = data_test[c].shift(lag)
+                
+                data_train.drop(c, axis=1, inplace=True)
+            Xt_train = data_train.dropna()
+            Xt_test = data_test.dropna()
+
         else:
             raise Exception("fs method not registered")
 
@@ -244,13 +361,13 @@ def run_forecast(data: pd.DataFrame,
             Xt_selected_test = Xt_selected_test.dropna()
 
             if incercept:
-                Xt_selected_train['const'] = 1
-                Xt_selected_test['const'] = 1
+                Xt_selected_train["const"] = 1
+                Xt_selected_test["const"] = 1
 
             # linear regression estimate and prediction
             model = sm.OLS(endog=Xt_selected_train[target], exog=Xt_selected_train.drop([target], axis=1))
             model_fit = model.fit()
-            ypred = model_fit.predict(Xt_selected_test)
+            ypred = model_fit.predict(exog=Xt_selected_test)
 
             pred = pd.DataFrame([{"date": ypred.index[0], "prediction": ypred[0], "true": yt_test.loc[ypred.index[0]][0]}])
             predictions.append(pred)
