@@ -8,15 +8,23 @@ import lingam
 import numpy as np
 from statsmodels.tsa.stattools import grangercausalitytests
 from statsmodels.tsa.api import VAR
-from causalnex.structure.dynotears import from_pandas_dynamic
-import rpy2.robjects as robjects
-from rpy2.robjects import pandas2ri
-from rpy2.robjects import numpy2ri
+
+try:
+    from causalnex.structure.dynotears import from_pandas_dynamic
+except:
+    print("causalnex package not installed. You wont be able to run dynotears model.") 
+
+try:
+    import rpy2.robjects as robjects
+    from rpy2.robjects import pandas2ri
+    from rpy2.robjects import numpy2ri
+    pandas2ri.activate()
+except:
+    print("rpy2 package not installed. You wont be able to run seqICP model.")
 
 from models.ClusteringModels import ClusteringModels
 from models.ModelClasses import LassoWrapper
 
-pandas2ri.activate()
 
 def cv_opt(X, y, model_wrapper, cv_type, n_splits, n_iter, seed, verbose, n_jobs, scoring):
 
