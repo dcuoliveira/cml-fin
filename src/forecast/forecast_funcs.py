@@ -329,7 +329,7 @@ def run_forecast(data: pd.DataFrame,
             parent_set = robjects.r['parent_set']
 
             if len(parent_set) != 0:
-                parada = 1
+                selected_variables = list(X_train.columns[(parent_set - 1)])
             else:
                 selected_variables = []
 
