@@ -303,8 +303,8 @@ def run_forecast(data: pd.DataFrame,
             X_train = data_train.drop(target, axis=1).values
             y_train = data_train[target]
 
-            X_train_r = numpy2ri.numpy2ri(X_train)
-            y_train_r = numpy2ri.numpy2ri(y_train)
+            X_train_r = numpy2ri.numpy2rpy(X_train)
+            y_train_r = numpy2ri.numpy2rpy(y_train)
 
             # pass inputs to global variables
             robjects.globalenv['Xmatrix'] = X_train_r
