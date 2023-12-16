@@ -22,8 +22,6 @@ dependencies:
   - statsmodels
   - lightgbm
   - seaborn
-  - rpy2
-  - r-essentials
   - pip:
     - ICPy
     - lingam
