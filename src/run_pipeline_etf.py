@@ -62,7 +62,7 @@ if __name__ == "__main__":
         os.makedirs(os.path.join(args.outputs_path, args.fs_method, args.data_name))
     
     # save results
-    save_path = os.path.join(args.outputs_path, args.fs_method, args.data_name, "{}_{}_{}_{}.pickle".format(target,
+    save_path = os.path.join(args.outputs_path, args.fs_method, args.data_name, "{}_{}_{}_{}.pickle".format(args.target,
                                                                                                             args.estimation_window,
                                                                                                             args.correl_window,
                                                                                                             args.p))
