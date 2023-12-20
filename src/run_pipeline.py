@@ -7,6 +7,7 @@ from metadata.etfs import etfs_large, etfs_small
 from utils.conn_data import save_pickle
 
 parser = argparse.ArgumentParser(description="Run forecast.")
+
 parser.add_argument("--estimation_window", type=int, default=12 * 4)
 parser.add_argument("--p", type=int, default=1)
 parser.add_argument("--correl_window", type=int, default=100000) # all available data
