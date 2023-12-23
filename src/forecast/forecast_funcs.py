@@ -389,7 +389,10 @@ def run_forecast(data: pd.DataFrame,
     predictions_df.set_index('date', inplace=True)
 
     # save parents of target
-    parents_of_targets_df = pd.concat(parents_of_target, axis=0)
+    if len(parents_of_target) != 0:
+        parents_of_targets_df = pd.concat(parents_of_target, axis=0)
+    else:
+        parents_of_targets_df = pd.DataFrame(columns=["date", "variable", "value", "fred", "cluster"])
 
     results = {"predictions": predictions_df,
                 "parents_of_target": parents_of_targets_df,
