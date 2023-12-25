@@ -25,7 +25,7 @@ try:
 except:
     print("rpy2 package not installed. You wont be able to run seqICP model.")
 
-from models.ClusteringModels import ClusteringModels
+from models.ClusteringModels import ClusteringModels, matchClusters
 from models.ModelClasses import LassoWrapper
 
 
@@ -104,6 +104,12 @@ def run_forecast(data: pd.DataFrame,
             clusters_series.append(dfLabels)
         # monthly clusters        
         clusters_series = pd.concat(clusters_series, axis = 1)
+        
+        for t in range(1, clusters_series.shape[1]):
+            curr, prev = clusters_series[str(t)], clusters_series[str(t - 1)]
+            clusterMatchDict = matchClusters(curr, prev)
+            clusters_series.replace({str(t) : clusterMatchDict})
+            
         clusters_series.to_parquet(clusters_path)
     
     
