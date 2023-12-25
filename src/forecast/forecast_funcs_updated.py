@@ -108,7 +108,7 @@ def run_forecast(data: pd.DataFrame,
         for t in range(1, clusters_series.shape[1]):
             curr, prev = clusters_series[str(t)], clusters_series[str(t - 1)]
             clusterMatchDict = matchClusters(curr, prev)
-            clusters_series.replace({str(t) : clusterMatchDict})
+            clusters_series.replace({str(t) : clusterMatchDict}, inplace = True)
             
         clusters_series.to_parquet(clusters_path)
     
