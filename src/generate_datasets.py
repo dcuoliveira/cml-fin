@@ -11,7 +11,8 @@ if __name__ == "__main__":
     fred_data.drop("S&P 500", axis=1, inplace=True)
 
     # load full daily etfs data
-    etfs_data = pd.read_csv(os.path.join(os.path.dirname(__file__), "data", "inputs", "etfs.csv"))
+    # etfs_data = pd.read_csv(os.path.join(os.path.dirname(__file__), "data", "inputs", "etfs.csv"))
+    etfs_data = pd.read_csv(os.path.join(os.path.dirname(__file__), "data", "inputs", "wrds_etf_returns.csv"))
 
     # resample to business day frequency and forward fill
     fred_data["date"] = pd.to_datetime(fred_data["date"])
@@ -22,8 +23,10 @@ if __name__ == "__main__":
     etfs_data.set_index("date", inplace=True)
     etfs_data = etfs_data.resample("B").last().ffill()
 
-    # compute log returns
-    returns_data = np.log(etfs_data).diff(22)
+    # # compute log returns
+    # returns_data = np.log(etfs_data).diff(22)
+    returns_data = etfs_data.copy()
+    returns_data = returns_data[[col for col in returns_data.columns if "t+1" not in col]]
 
     # compute first non-nan index
     first_non_nan = returns_data.apply(lambda x: x.first_valid_index())
