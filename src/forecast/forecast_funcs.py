@@ -125,6 +125,7 @@ def run_forecast(data: pd.DataFrame,
 
             # build labels
             labels = {}
+            selected_variables = []
             for i in range(p+1):
 
                 var_names = []
@@ -135,10 +136,14 @@ def run_forecast(data: pd.DataFrame,
                             var_names.append(f"{colname}(t-{i})")
                 labels[f'labels{i}'] = var_names
 
-                if i != 0:
-                    B = var_lingam_fit.adjacency_matrices_[i]
-                    B_df = pd.DataFrame(B, columns=labels[f'labels{i}'] , index=labels['labels0'] )
-                    selected_variables = list(B_df.loc["{target}(t)".format(target=target)][np.abs(B_df.loc["{target}(t)".format(target=target)]) > beta_threshold].index)
+                B = var_lingam_fit.adjacency_matrices_[i]
+                B_df = pd.DataFrame(B, columns=labels[f'labels{i}'] , index=labels['labels0'] )
+                tmp_selected_variables = list(B_df.loc["{target}(t)".format(target=target)][np.abs(B_df.loc["{target}(t)".format(target=target)]) > beta_threshold].index)
+
+                selected_variables += [name.split("(")[0] for name in tmp_selected_variables]
+
+            selected_variables = list(set(selected_variables))
+            selected_variables = [f"{var}(t-{i})" for var in selected_variables for i in range(1, p+1)]
 
             # save dags
             dict_ = {Xt_train.index[-1].strftime("%Y%m%d"): {
