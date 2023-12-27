@@ -8,6 +8,7 @@ import lingam
 import numpy as np
 from statsmodels.tsa.stattools import grangercausalitytests
 from statsmodels.tsa.api import VAR
+from statsmodels.api import OLS
 
 try:
     from causalnex.structure.dynotears import from_pandas_dynamic
@@ -186,10 +187,21 @@ def run_forecast(data: pd.DataFrame,
 
             # fit best model
             lasso_best_fit = model_fit.best_estimator_.fit(Xt_train, yt_train)
-            B1_df = pd.DataFrame(lasso_best_fit.coef_, index=Xt_train.columns, columns=[f"{target}(t)"]).sort_values(ascending=False, by=f"{target}(t)")
 
-            # select variables with beta > threshold
-            selected_variables = list(B1_df[B1_df > beta_threshold].dropna().index)
+            # Get the features that have non-zero coefficients
+            selected_features = np.where(lasso_best_fit.coef_ != 0)[0]
+            Xt_train_selected = Xt_train[Xt_train.columns[selected_features]]
+
+            if Xt_train_selected.shape[1] != 0:
+                # Fit OLS to the selected features to compute p-values
+                ols_model = OLS(yt_train, Xt_train_selected).fit()
+
+                B1_df = pd.DataFrame(ols_model.params, index=Xt_train_selected.columns, columns=[f"{target}(t)"]).sort_values(ascending=False, by=f"{target}(t)")
+
+                # select variables with beta > threshold
+                selected_variables = list(B1_df[ols_model.pvalues < pval_threshold].dropna().index)
+            else:
+                selected_variables = []
         elif fs_method == "pairwise-granger":
             data_train = pd.concat([yt_train, Xt_train], axis=1)
             data_test = pd.concat([yt_test, Xt_test], axis=1)
