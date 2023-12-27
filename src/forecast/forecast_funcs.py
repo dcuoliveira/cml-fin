@@ -347,6 +347,12 @@ def run_forecast(data: pd.DataFrame,
             raise Exception("fs method not registered")
 
         selected_variables_df = pd.DataFrame(1, index=selected_variables, columns=[Xt_test.index[-1]]).T
+
+        yt_test_zscore = yt_test.copy()
+        yt_test_zscore.index = pd.to_datetime(yt_test_zscore.index)
+        yt_test = yt_test * std[yt_test.columns[0]] + mean[yt_test.columns[0]]
+        yt_test.index = pd.to_datetime(yt_test.index)
+
         if len(selected_variables) != 0:
 
             # add clusters to parents
@@ -377,10 +383,22 @@ def run_forecast(data: pd.DataFrame,
             model_fit = model.fit()
             ypred = model_fit.predict(exog=Xt_selected_test)
 
-            pred = pd.DataFrame([{"date": ypred.index[0], "prediction": ypred[0], "true": yt_test.loc[ypred.index[0]][0]}])
+            pred = pd.DataFrame([{
+                "date": ypred.index[0],
+                "prediction_zscore": ypred[0],
+                "true_zscore": yt_test_zscore.loc[ypred.index[0]][0],
+                "prediction": ypred[0] * std[yt_test.columns[0]] + mean[yt_test.columns[0]],
+                "true": yt_test.loc[ypred.index[0]][0],
+                }])
             predictions.append(pred)
         else:
-            pred = pd.DataFrame([{"date": yt_test.index[-1], "prediction": 0, "true": yt_test.loc[yt_test.index[-1]][0]}])
+            pred = pd.DataFrame([{
+                "date": yt_test.index[-1],
+                "prediction_zscore": 0,
+                "true_zscore": yt_test_zscore.iloc[-1][0],
+                "prediction": 0,
+                "true": yt_test.iloc[-1][0],
+                }])
             predictions.append(pred)
 
     # save predictions
