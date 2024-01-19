@@ -2,7 +2,27 @@ from sklearn.cluster import KMeans
 import pandas as pd
 import os
 import numpy as np
-from sklearn.metrics import silhouette_score
+from sklearn.metrics import silhouette_score, jaccard_score
+from scipy.optimize import linear_sum_assignment
+
+
+def matchClusters(row, col):
+    labelRow, labelCol = list(set(row)), list(set(col))
+    m, n = len(labelRow), len(labelCol)
+    mat = np.zeros(shape = (m, n))
+    for i, rl in enumerate(labelRow):
+        for j, cl in enumerate(labelCol):
+            mat[i, j] = jaccard_score(row == rl, col == cl)    
+    clusterDict = {labelRow[i] : labelCol[j] for i, j in zip(*linear_sum_assignment(mat))}
+    if m > n:
+        freeLabels = list(set(range(max(m, max(labelCol) + 1))) - set(clusterDict.values()))
+        indL = 0
+        for l in labelRow:
+            if l not in clusterDict:
+                clusterDict[l] = freeLabels[indL]
+                indL += 1
+    return clusterDict
+
 
 
 class ClusteringModels:
@@ -38,7 +58,7 @@ class ClusteringModels:
                          data: pd.DataFrame, 
                          target: str, 
                          clustering_method: str, 
-                         n_clusters: int = 20, 
+                         n_clusters: int = 0, 
                          method: str = "spectral",
                          threshold: float = 0.8):
 
@@ -183,7 +203,7 @@ def Laplacian(A, symmetrize, normalize, remove_diag):
     return L
 
 
-def spectral_clustering(A, n_clusters, n_eig = None, symmetrize = 'M+MT', normalize = 'rw', init = 'k-means++', random_state = None, n_init = 500):
+def spectral_clustering(A, n_clusters, n_eig = None, symmetrize = 'M+MT', normalize = 'rw', init = 'k-means++', random_state = 0, n_init = 500):
     '''
     Spectral Clustering on weighted, undirected and unsigned graph A
 
