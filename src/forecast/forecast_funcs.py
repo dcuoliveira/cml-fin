@@ -82,7 +82,7 @@ def run_forecast(data: pd.DataFrame,
     
     cm = ClusteringModels()
 
-    if rolling_cluster:
+    if (fs_method != "lasso") and rolling_cluster:
         clusters_path = join(os.path.dirname(os.path.dirname(__file__)),
                              "data",
                              "inputs",
@@ -134,21 +134,26 @@ def run_forecast(data: pd.DataFrame,
         train_df = data.iloc[start:(estimation_window + step), :]
 
         # compute within c1luster correlation
-        if rolling_cluster:
-            labelled_clusters = clusters_series[[str(step)]]
-            labelled_clusters.columns = ["cluster"]
-            labelled_clusters.reset_index(inplace = True)
-        else:
-            clusters = cm.compute_clusters(data=data, target=target, clustering_method=clustering_method)  
-            labelled_clusters = cm.add_cluster_description(clusters=clusters)
-        ranks = cm.compute_within_cluster_corr_rank(data=train_df,
-                                                    target=target,
-                                                    labelled_clusters=labelled_clusters,
-                                                    correl_window=correl_window)      
+        if fs_method != "lasso":
+            if rolling_cluster:
+                labelled_clusters = clusters_series[[str(step)]]
+                labelled_clusters.columns = ["cluster"]
+                labelled_clusters.reset_index(inplace = True)
+            else:
+                clusters = cm.compute_clusters(data=data, target=target, clustering_method=clustering_method)  
+                labelled_clusters = cm.add_cluster_description(clusters=clusters)
+            ranks = cm.compute_within_cluster_corr_rank(data=train_df,
+                                                        target=target,
+                                                        labelled_clusters=labelled_clusters,
+                                                        correl_window=correl_window)      
 
-        # select features and time window
-        last_row = pd.DataFrame(ranks.iloc[-1])
-        selected_columns = list(last_row[last_row == 1].dropna().index)
+            # select features and time window
+            last_row = pd.DataFrame(ranks.iloc[-1])
+            selected_columns = list(last_row[last_row == 1].dropna().index)
+        else:
+            labelled_clusters = pd.DataFrame([{"fred": target, "cluster": 1, "description": target}])
+            selected_columns = list(train_df.drop([target], axis=1).columns)
+
         train_df = train_df[[target] + selected_columns]
         test_df = data[[target] + selected_columns].iloc[(estimation_window + step - p):(estimation_window + step + 1), :]
 
