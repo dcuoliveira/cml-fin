@@ -77,6 +77,9 @@ def run_forecast(data: pd.DataFrame,
                  n_clusters: int = 0,
                  cluster_threshold: float = 0.8):
     
+    rolling_cluster = True if clustering_method.split("_")[0] == "rolling" else False
+    clustering_method = clustering_method.split("_")[1] if len(clustering_method.split("_")) > 1 else clustering_method
+    
     clusters_path = join("./data/clusters", clustering_method, str(n_clusters))
     if not n_clusters:
         clusters_path = join(clusters_path, str(cluster_threshold))

@@ -9,6 +9,8 @@ import numpy as np
 from statsmodels.tsa.stattools import grangercausalitytests
 from statsmodels.tsa.api import VAR
 from statsmodels.api import OLS
+import os
+from os.path import join
 
 try:
     from causalnex.structure.dynotears import from_pandas_dynamic
@@ -23,7 +25,7 @@ try:
 except:
     print("rpy2 package not installed. You wont be able to run seqICP model.")
 
-from models.ClusteringModels import ClusteringModels
+from models.ClusteringModels import ClusteringModels, matchClusters
 from models.ModelClasses import LassoWrapper
 
 
@@ -71,9 +73,48 @@ def run_forecast(data: pd.DataFrame,
                  incercept: bool,
                  fs_method: str,
                  cv_type: str,
-                 clustering_method: str):
+                 clustering_method: str,
+                 n_clusters: int = 0,
+                 cluster_threshold: float = 0.8):
+    
+    rolling_cluster = True if clustering_method.split("_")[0] == "rolling" else False
+    clustering_method = clustering_method.split("_")[1] if len(clustering_method.split("_")) > 1 else clustering_method
     
     cm = ClusteringModels()
+
+    if rolling_cluster:
+        clusters_path = join("./data/clusters", clustering_method, str(n_clusters))
+        if not n_clusters:
+            clusters_path = join(clusters_path, str(cluster_threshold))
+        os.makedirs(clusters_path, exist_ok = True)
+        clusters_path = join(clusters_path, "clusters.parquet")
+
+        if os.path.exists(clusters_path):
+            clusters_series = pd.read_parquet(clusters_path)
+        else:
+            clusters_series = []
+            for step in tqdm(range(0, len(data) - estimation_window, 1), total=len(data) - estimation_window, desc="rolling {}: {}".format(fs_method, target)):
+                
+                if fix_start or (step == 0):
+                    start = 0
+                else:
+                    start += 1
+                
+                train_df = data.iloc[start:(estimation_window + step), :]
+                clusters = cm.compute_clusters(data = train_df, target=target, clustering_method=clustering_method)
+                labelled_clusters = cm.add_cluster_description(clusters=clusters)
+                dfLabels = labelled_clusters.set_index("fred")[["cluster"]].copy()
+                dfLabels.columns = [str(step)]
+                clusters_series.append(dfLabels)
+            # monthly clusters        
+            clusters_series = pd.concat(clusters_series, axis = 1)
+            
+            for t in range(1, clusters_series.shape[1]):
+                curr, prev = clusters_series[str(t)], clusters_series[str(t - 1)]
+                clusterMatchDict = matchClusters(curr, prev)
+                clusters_series.replace({str(t) : clusterMatchDict}, inplace = True)
+                
+            clusters_series.to_parquet(clusters_path)
 
     predictions = []
     parents_of_target = []
@@ -88,8 +129,13 @@ def run_forecast(data: pd.DataFrame,
         train_df = data.iloc[start:(estimation_window + step), :]
 
         # compute within c1luster correlation
-        clusters = cm.compute_clusters(data=data, target=target, clustering_method=clustering_method)  
-        labelled_clusters = cm.add_cluster_description(clusters=clusters)
+        if rolling_cluster:
+            labelled_clusters = clusters_series[[str(step)]]
+            labelled_clusters.columns = ["cluster"]
+            labelled_clusters.reset_index(inplace = True)
+        else:
+            clusters = cm.compute_clusters(data=data, target=target, clustering_method=clustering_method)  
+            labelled_clusters = cm.add_cluster_description(clusters=clusters)
         ranks = cm.compute_within_cluster_corr_rank(data=train_df,
                                                     target=target,
                                                     labelled_clusters=labelled_clusters,
