@@ -85,7 +85,7 @@ def run_forecast(data: pd.DataFrame,
     if rolling_cluster:
         clusters_path = join(os.path.dirname(os.path.dirname(__file__)),
                              "data",
-                             "inputs"
+                             "inputs",
                              "clusters",
                              clustering_method,
                              str(n_clusters))
