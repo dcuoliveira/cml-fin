@@ -4,7 +4,7 @@ from sklearn.linear_model import Lasso
 import numpy as np
 
 class LassoWrapper():
-    def __init__(self, model_params={'fit_intercept': True, 'max_iter': 100000}):
+    def __init__(self, model_params={'fit_intercept': True, 'max_iter': 10000000}):
 
         # find optimal lambda according to friedman, hastie, and tibshirani (2010)
         ## Friedman, J., Hastie, T., & Tibshirani, R. (2010). Regularization paths for generalized linear models via coordinate descent. Journal of statistical software, 33(1), 1.
