@@ -22,7 +22,7 @@ class LassoWrapper():
 
         self.model_name = "lasso"
         self.search_type = 'random'
-        self.param_grid = {'alpha': alpha_path}
+        self.param_grid = {'alpha': np.linspace(0, 10)}
         if model_params is None:
             self.ModelClass = Lasso()
         else:
