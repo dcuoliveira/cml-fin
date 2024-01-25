@@ -40,13 +40,13 @@ def cv_opt(X, y, model_wrapper, cv_type, n_splits, n_iter, seed, verbose, n_jobs
     # choose search type
     if model_wrapper.search_type == 'random':
         model_search = RandomizedSearchCV(estimator=model_wrapper.ModelClass,
-                                        param_distributions=model_wrapper.param_grid,
-                                        n_iter=n_iter,
-                                        cv=splits,
-                                        verbose=verbose,
-                                        n_jobs=n_jobs,
-                                        scoring=scoring,
-                                        random_state=seed)
+                                         param_distributions=model_wrapper.param_grid,
+                                         n_iter=n_iter,
+                                         cv=splits,
+                                         verbose=verbose,
+                                         n_jobs=n_jobs,
+                                         scoring=scoring,
+                                         random_state=seed)
     elif model_wrapper.search_type == 'grid':
         model_search = GridSearchCV(estimator=model_wrapper.ModelClass,
                                     param_grid=model_wrapper.param_grid,
@@ -219,7 +219,7 @@ def run_forecast(data: pd.DataFrame,
                 data_train.drop(c, axis=1, inplace=True)
             Xt_train = data_train.dropna()
             Xt_test = data_test.dropna()
-        elif fs_method == "lasso":
+        elif (fs_method == "lasso1") or (fs_method == "lasso2"):
             Xt_train = pd.concat([yt_train, Xt_train], axis=1)
             Xt_test = pd.concat([yt_test, Xt_test], axis=1)
 
@@ -234,10 +234,18 @@ def run_forecast(data: pd.DataFrame,
             Xt_train = Xt_train.dropna()
             yt_train = yt_train.loc[Xt_train.index]
 
+            # cv type
+            if fs_method == "lasso1":
+                method = "default"
+            elif fs_method == "lasso2":
+                method = "fht"
+            else:
+                raise Exception(f"fs method not registered: {fs_method}")
+
             # train lasso model
             model_fit = cv_opt(X=Xt_train,
                                y=yt_train,
-                               model_wrapper=LassoWrapper(),
+                               model_wrapper=LassoWrapper(hyperparameter_space_method=method),
                                cv_type=cv_type,
                                n_splits=2,
                                n_iter=10,
@@ -415,7 +423,6 @@ def run_forecast(data: pd.DataFrame,
                 data_train.drop(c, axis=1, inplace=True)
             Xt_train = data_train.dropna()
             Xt_test = data_test.dropna()
-
         else:
             raise Exception("fs method not registered")
 
