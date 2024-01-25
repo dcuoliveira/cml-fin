@@ -106,7 +106,7 @@ def run_forecast(data: pd.DataFrame,
                     start += 1
                 
                 train_df = data.iloc[start:(estimation_window + step), :]
-                clusters = cm.compute_clusters(data = train_df, target=target, clustering_method=clustering_method)
+                clusters = cm.compute_clusters(data = train_df, target=target, n_clusters=n_clusters, clustering_method=clustering_method)
                 labelled_clusters = cm.add_cluster_description(clusters=clusters)
                 dfLabels = labelled_clusters.set_index("fred")[["cluster"]].copy()
                 dfLabels.columns = [str(step)]
@@ -140,7 +140,7 @@ def run_forecast(data: pd.DataFrame,
                 labelled_clusters.columns = ["cluster"]
                 labelled_clusters.reset_index(inplace = True)
             else:
-                clusters = cm.compute_clusters(data=data, target=target, clustering_method=clustering_method)  
+                clusters = cm.compute_clusters(data=data, target=target, n_clusters=n_clusters, clustering_method=clustering_method)  
                 labelled_clusters = cm.add_cluster_description(clusters=clusters)
             ranks = cm.compute_within_cluster_corr_rank(data=train_df,
                                                         target=target,
