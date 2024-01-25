@@ -18,6 +18,7 @@ parser.add_argument("--incercept", type=bool, default=True)
 parser.add_argument("--fs_method", type=str, default="multivariate-granger")
 parser.add_argument("--cv_type", type=str, default="cv")
 parser.add_argument("--clustering_method", type=str, default="rolling_kmeans")
+parser.add_argument("--n_clusters", type=int, default=5)
 parser.add_argument("--data_name", type=str, default="etfs_macro_large")
 parser.add_argument("--inputs_path", type=str, default=os.path.join(os.path.dirname(__file__), "data", "inputs"))
 parser.add_argument("--outputs_path", type=str, default=os.path.join(os.path.dirname(__file__), "data", "outputs"))
@@ -53,11 +54,12 @@ if __name__ == "__main__":
                                incercept=args.incercept,
                                fs_method=args.fs_method,
                                cv_type=args.cv_type,
-                               clustering_method=args.clustering_method)
+                               clustering_method=args.clustering_method,
+                               n_clusters=args.n_clusters)
 
         results['args'] = args
         rolling_cluster = "rollingcluster" if args.clustering_method.split("_")[0] == "rolling" else ""
-        out_fs_method = f"{args.fs_method}_{rolling_cluster}"
+        out_fs_method = f"{args.fs_method}_{rolling_cluster}_k{args.n_clusters}"
 
         # check if results folder exists
         if not os.path.exists(os.path.join(args.outputs_path, out_fs_method, args.data_name)):
