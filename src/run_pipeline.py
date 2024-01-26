@@ -58,7 +58,13 @@ if __name__ == "__main__":
                                n_clusters=args.n_clusters)
 
         results['args'] = args
-        cluster_tag = "rollingcluster" if args.clustering_method.split("_")[0] == "rolling" else "cluster"
+
+        if args.clustering_method == "no":
+            cluster_tag = "nocluster"
+        elif args.clustering_method == "rolling":
+            cluster_tag = "rollingcluster"
+        elif args.clustering_method == "kmeans":
+            cluster_tag = "cluster"
 
         if (args.fs_method != "lasso1") and (args.fs_method != "lasso2"):        
             out_fs_method = f"{args.fs_method}_{cluster_tag}"
