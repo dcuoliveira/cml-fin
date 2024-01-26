@@ -77,8 +77,14 @@ def run_forecast(data: pd.DataFrame,
                  n_clusters: int = 0,
                  cluster_threshold: float = 0.8):
     
-    rolling_cluster = True if clustering_method.split("_")[0] == "rolling" else False
-    clustering_method = clustering_method.split("_")[1] if len(clustering_method.split("_")) > 1 else clustering_method
+    # check if to use clustering or not, and if clustering is rolling or not
+    if (clustering_method is None) or (len(clustering_method.split("_")) == 1):
+        rolling_cluster = False
+    elif clustering_method.split("_")[0] == "rolling":
+        rolling_cluster = True
+
+        # get clustering method
+        clustering_method = clustering_method.split("_")[1] if len(clustering_method.split("_")) > 1 else clustering_method
     
     cm = ClusteringModels()
 
@@ -134,7 +140,7 @@ def run_forecast(data: pd.DataFrame,
         train_df = data.iloc[start:(estimation_window + step), :]
 
         # compute within c1luster correlation
-        if fs_method != "lasso":
+        if clustering_method is not None:
             if rolling_cluster:
                 labelled_clusters = clusters_series[[str(step)]]
                 labelled_clusters.columns = ["cluster"]
@@ -142,6 +148,7 @@ def run_forecast(data: pd.DataFrame,
             else:
                 clusters = cm.compute_clusters(data=data, target=target, n_clusters=n_clusters, clustering_method=clustering_method)  
                 labelled_clusters = cm.add_cluster_description(clusters=clusters)
+            
             ranks = cm.compute_within_cluster_corr_rank(data=train_df,
                                                         target=target,
                                                         labelled_clusters=labelled_clusters,
