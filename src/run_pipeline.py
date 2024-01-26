@@ -15,10 +15,10 @@ parser.add_argument("--beta_threshold", type=float, default=0.4)
 parser.add_argument("--pval_threshold", type=float, default=0.05)
 parser.add_argument("--fix_start", type=bool, default=True)
 parser.add_argument("--incercept", type=bool, default=True)
-parser.add_argument("--fs_method", type=str, default="multivariate-granger")
+parser.add_argument("--fs_method", type=str, default="var-lingam")
 parser.add_argument("--cv_type", type=str, default="cv")
-parser.add_argument("--clustering_method", type=str, default="rolling_kmeans")
-parser.add_argument("--n_clusters", type=int, default=5)
+parser.add_argument("--clustering_method", type=str, default="kmeans")
+parser.add_argument("--n_clusters", type=int, default=0)
 parser.add_argument("--data_name", type=str, default="etfs_macro_large")
 parser.add_argument("--inputs_path", type=str, default=os.path.join(os.path.dirname(__file__), "data", "inputs"))
 parser.add_argument("--outputs_path", type=str, default=os.path.join(os.path.dirname(__file__), "data", "outputs"))
@@ -58,8 +58,15 @@ if __name__ == "__main__":
                                n_clusters=args.n_clusters)
 
         results['args'] = args
-        rolling_cluster = "rollingcluster" if args.clustering_method.split("_")[0] == "rolling" else ""
-        out_fs_method = f"{args.fs_method}_{rolling_cluster}_k{args.n_clusters}"
+        cluster_tag = "rollingcluster" if args.clustering_method.split("_")[0] == "rolling" else "cluster"
+
+        if (args.fs_method != "lasso1") and (args.fs_method != "lasso2"):        
+            out_fs_method = f"{args.fs_method}_{cluster_tag}"
+        
+        if args.n_clusters != 0:
+            out_fs_method += f"_k{args.n_clusters}"
+        else:
+            out_fs_method += "_kauto"
 
         # check if results folder exists
         if not os.path.exists(os.path.join(args.outputs_path, out_fs_method, args.data_name)):
