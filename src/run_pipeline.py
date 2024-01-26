@@ -17,7 +17,7 @@ parser.add_argument("--fix_start", type=bool, default=True)
 parser.add_argument("--incercept", type=bool, default=True)
 parser.add_argument("--fs_method", type=str, default="pairwise-granger")
 parser.add_argument("--cv_type", type=str, default="cv")
-parser.add_argument("--clustering_method", type=str, default="no")
+parser.add_argument("--clustering_method", type=str, default="rolling_kmeans")
 parser.add_argument("--n_clusters", type=int, default=0)
 parser.add_argument("--data_name", type=str, default="etfs_macro_large")
 parser.add_argument("--inputs_path", type=str, default=os.path.join(os.path.dirname(__file__), "data", "inputs"))
@@ -61,7 +61,7 @@ if __name__ == "__main__":
 
         if args.clustering_method == "no":
             cluster_tag = "nocluster"
-        elif args.clustering_method == "rolling":
+        elif args.clustering_method == "rolling_kmeans":
             cluster_tag = "rollingcluster"
         elif args.clustering_method == "kmeans":
             cluster_tag = "cluster"
