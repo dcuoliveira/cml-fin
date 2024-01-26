@@ -15,7 +15,7 @@ parser.add_argument("--beta_threshold", type=float, default=0.4)
 parser.add_argument("--pval_threshold", type=float, default=0.05)
 parser.add_argument("--fix_start", type=bool, default=True)
 parser.add_argument("--incercept", type=bool, default=True)
-parser.add_argument("--fs_method", type=str, default="multivariate-granger")
+parser.add_argument("--fs_method", type=str, default="pairwise-granger")
 parser.add_argument("--cv_type", type=str, default="cv")
 parser.add_argument("--clustering_method", type=str, default="no")
 parser.add_argument("--n_clusters", type=int, default=0)
@@ -74,7 +74,7 @@ if __name__ == "__main__":
         elif (args.n_clusters == 0) and (args.clustering_method != "no"):
             out_fs_method += f"_kauto"
         else:
-            raise ValueError("Clustering method not specified.")
+            pass
 
         # check if results folder exists
         if not os.path.exists(os.path.join(args.outputs_path, out_fs_method, args.data_name)):
