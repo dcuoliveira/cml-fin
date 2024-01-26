@@ -69,10 +69,12 @@ if __name__ == "__main__":
         if (args.fs_method != "lasso1") and (args.fs_method != "lasso2"):        
             out_fs_method = f"{args.fs_method}_{cluster_tag}"
         
-        if args.n_clusters != 0:
+        if (args.n_clusters != 0) and (args.clustering_method != "no"):
             out_fs_method += f"_k{args.n_clusters}"
+        elif (args.n_clusters == 0) and (args.clustering_method != "no"):
+            out_fs_method += f"_kauto"
         else:
-            out_fs_method += "_kauto"
+            raise ValueError("Clustering method not specified.")
 
         # check if results folder exists
         if not os.path.exists(os.path.join(args.outputs_path, out_fs_method, args.data_name)):
