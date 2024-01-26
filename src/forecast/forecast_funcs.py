@@ -78,7 +78,7 @@ def run_forecast(data: pd.DataFrame,
                  cluster_threshold: float = 0.8):
     
     # check if to use clustering or not, and if clustering is rolling or not
-    if (clustering_method is None) or (len(clustering_method.split("_")) == 1):
+    if (clustering_method == "no") or (len(clustering_method.split("_")) == 1):
         rolling_cluster = False
     elif clustering_method.split("_")[0] == "rolling":
         rolling_cluster = True
@@ -140,7 +140,7 @@ def run_forecast(data: pd.DataFrame,
         train_df = data.iloc[start:(estimation_window + step), :]
 
         # compute within c1luster correlation
-        if clustering_method is not None:
+        if clustering_method != "no":
             if rolling_cluster:
                 labelled_clusters = clusters_series[[str(step)]]
                 labelled_clusters.columns = ["cluster"]
