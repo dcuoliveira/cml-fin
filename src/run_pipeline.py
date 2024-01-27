@@ -60,21 +60,20 @@ if __name__ == "__main__":
         results['args'] = args
 
         if args.clustering_method == "no":
-            cluster_tag = "nocluster"
+            out_fs_method = f"{args.fs_method}_nocluster"
         elif args.clustering_method == "rolling_kmeans":
-            cluster_tag = "rollingcluster"
+            out_fs_method = f"{args.fs_method}_rollingcluster"
         elif args.clustering_method == "kmeans":
-            cluster_tag = "cluster"
+            out_fs_method = f"{args.fs_method}_cluster"
 
-        if (args.fs_method != "lasso1") and (args.fs_method != "lasso2"):        
-            out_fs_method = f"{args.fs_method}_{cluster_tag}"
-        
-        if (args.n_clusters != 0) and (args.clustering_method != "no"):
+        if args.clustering_method == "no":
+            pass
+        elif (args.n_clusters != 0) and (args.clustering_method != "no"):
             out_fs_method += f"_k{args.n_clusters}"
         elif (args.n_clusters == 0) and (args.clustering_method != "no"):
             out_fs_method += f"_kauto"
         else:
-            pass
+            raise ValueError(f"Clustering method not recognized: {args.clustering_method} and n_clusters: {args.n_clusters}")
 
         # check if results folder exists
         if not os.path.exists(os.path.join(args.outputs_path, out_fs_method, args.data_name)):
