@@ -5,6 +5,7 @@ import os
 from forecast.forecast_funcs import run_forecast
 from metadata.etfs import etfs_large, etfs_small
 from utils.conn_data import save_pickle
+from utils.parsers import str_2_bool
 
 parser = argparse.ArgumentParser(description="Run forecast.")
 
@@ -13,8 +14,8 @@ parser.add_argument("--p", type=int, default=1)
 parser.add_argument("--correl_window", type=int, default=100000) # all available data
 parser.add_argument("--beta_threshold", type=float, default=0.4)
 parser.add_argument("--pval_threshold", type=float, default=0.05)
-parser.add_argument("--fix_start", type=bool, default=True)
-parser.add_argument("--incercept", type=bool, default=True)
+parser.add_argument("--fix_start", type=str, default=True)
+parser.add_argument("--incercept", type=str, default=True)
 parser.add_argument("--fs_method", type=str, default="pairwise-granger")
 parser.add_argument("--cv_type", type=str, default="cv")
 parser.add_argument("--clustering_method", type=str, default="rolling_kmeans")
@@ -26,6 +27,9 @@ parser.add_argument("--outputs_path", type=str, default=os.path.join(os.path.dir
 if __name__ == "__main__":
 
     args = parser.parse_args()
+
+    args.fix_start = str_2_bool(args.fix_start)
+    args.incercept = str_2_bool(args.incercept)
 
     data = pd.read_csv(os.path.join(args.inputs_path, f'{args.data_name}.csv'))
     
