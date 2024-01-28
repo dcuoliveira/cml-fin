@@ -5,6 +5,7 @@ import os
 from forecast.forecast_funcs import run_forecast
 from metadata.etfs import etfs_large, etfs_small
 from utils.conn_data import save_pickle
+from utils.parsers import str_2_bool
 
 parser = argparse.ArgumentParser(description="Run forecast.")
 
@@ -26,6 +27,9 @@ parser.add_argument("--outputs_path", type=str, default=os.path.join(os.path.dir
 if __name__ == "__main__":
 
     args = parser.parse_args()
+
+    args.fix_start = str_2_bool(args.fix_start)
+    args.incercept = str_2_bool(args.incercept)
 
     data = pd.read_csv(os.path.join(args.inputs_path, f'{args.data_name}.csv'))
     
