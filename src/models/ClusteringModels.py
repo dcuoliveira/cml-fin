@@ -4,6 +4,7 @@ import os
 import numpy as np
 from sklearn.metrics import silhouette_score, jaccard_score
 from scipy.optimize import linear_sum_assignment
+import itertools
 
 
 def matchClusters(row, col):
@@ -28,7 +29,7 @@ def matchClusters(row, col):
 class ClusteringModels:
     def __init__(self) -> None:
         self.fred_des = pd.read_csv(os.path.join(os.path.dirname(os.path.dirname(__file__)), 'data', 'utils', 'fredmd_description.csv'), sep=';')
-        
+        self.prev_centroid_map = None
 
     def kmeans(self, input: pd.DataFrame, n_clusters: int=20):
 
@@ -46,11 +47,26 @@ class ClusteringModels:
 
         return clusters
     
-    def add_cluster_description(self, clusters):
-        
+    def add_cluster_description(self, clusters, match_cluster_labels: bool = True):
+        self.permutations = list(itertools.permutations(range(self.k)))
+
         labelled_clusters = pd.DataFrame({"fred": self.feature_names, "cluster": clusters.labels_})
         labelled_clusters.sort_values(by="cluster")
         labelled_clusters = pd.merge(labelled_clusters, self.fred_des[["fred", "description"]], on='fred')
+
+        if match_cluster_labels:
+            if self.prev_centroid_map is None:
+                self.prev_centroid_map = labelled_clusters["cluster"].values[:-1]
+            cur_min = np.inf
+            best_perm = None
+            for cur_perm in self.permutations:
+                # replace the cluster labels with the candidate permutation and compare with the previous cluster labels
+                cur_count = (labelled_clusters["cluster"].replace(range(0, self.k), cur_perm)[:-1] != self.prev_centroid_map).sum()
+                cur_count = cur_count / (len(labelled_clusters) - 1)
+                if cur_count < cur_min:
+                    cur_min = cur_count
+                    best_perm = cur_perm
+            labelled_clusters["cluster"] = labelled_clusters["cluster"].replace(range(0, self.k), best_perm)
         
         return labelled_clusters
 
@@ -64,7 +80,8 @@ class ClusteringModels:
 
         input = data.drop([target], axis=1).corr()
         self.feature_names = list(input.columns)
-        
+        self.k = n_clusters
+
         if not n_clusters:
             if method == "spectral":
                 n_clusters = threshold_variance_explained(input, threshold)
