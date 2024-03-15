@@ -54,19 +54,19 @@ class ClusteringModels:
         labelled_clusters.sort_values(by="cluster")
         labelled_clusters = pd.merge(labelled_clusters, self.fred_des[["fred", "description"]], on='fred')
 
-        if match_cluster_labels:
-            if self.prev_centroid_map is None:
-                self.prev_centroid_map = labelled_clusters["cluster"].values[:-1]
-            cur_min = np.inf
-            best_perm = None
-            for cur_perm in self.permutations:
-                # replace the cluster labels with the candidate permutation and compare with the previous cluster labels
-                cur_count = (labelled_clusters["cluster"].replace(range(0, self.k), cur_perm)[:-1] != self.prev_centroid_map).sum()
-                cur_count = cur_count / (len(labelled_clusters) - 1)
-                if cur_count < cur_min:
-                    cur_min = cur_count
-                    best_perm = cur_perm
-            labelled_clusters["cluster"] = labelled_clusters["cluster"].replace(range(0, self.k), best_perm)
+        # if match_cluster_labels:
+        #     if self.prev_centroid_map is None:
+        #         self.prev_centroid_map = labelled_clusters["cluster"].values[:-1]
+        #     cur_min = np.inf
+        #     best_perm = None
+        #     for cur_perm in self.permutations:
+        #         # replace the cluster labels with the candidate permutation and compare with the previous cluster labels
+        #         cur_count = (labelled_clusters["cluster"].replace(range(0, self.k), cur_perm)[:-1] != self.prev_centroid_map).sum()
+        #         cur_count = cur_count / (len(labelled_clusters) - 1)
+        #         if cur_count < cur_min:
+        #             cur_min = cur_count
+        #             best_perm = cur_perm
+        #     labelled_clusters["cluster"] = labelled_clusters["cluster"].replace(range(0, self.k), best_perm)
         
         return labelled_clusters
 
