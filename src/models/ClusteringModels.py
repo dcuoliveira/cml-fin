@@ -14,7 +14,7 @@ def matchClusters(row, col):
     for i, rl in enumerate(labelRow):
         for j, cl in enumerate(labelCol):
             mat[i, j] = jaccard_score(row == rl, col == cl)    
-    clusterDict = {labelRow[i] : labelCol[j] for i, j in zip(*linear_sum_assignment(mat))}
+    clusterDict = {labelRow[i] : labelCol[j] for i, j in zip(*linear_sum_assignment(mat, maximize = True))}
     if m > n:
         freeLabels = list(set(range(max(m, max(labelCol) + 1))) - set(clusterDict.values()))
         indL = 0
