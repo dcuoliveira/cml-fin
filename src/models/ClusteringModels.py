@@ -7,7 +7,7 @@ from scipy.optimize import linear_sum_assignment
 import itertools
 
 
-def matchClusters(row, col):
+def hungarianMatching(row, col):
     labelRow, labelCol = list(set(row)), list(set(col))
     m, n = len(labelRow), len(labelCol)
     mat = np.zeros(shape = (m, n))
@@ -24,6 +24,17 @@ def matchClusters(row, col):
                 indL += 1
     return clusterDict
 
+
+def matchClusters(clusters_series, inplace = True):
+    if not inplace:
+        clusters_series = clusters_series.copy()
+        
+    for t in range(1, clusters_series.shape[1]):
+        curr, prev = clusters_series[str(t)], clusters_series[str(t - 1)]
+        clusterMatchDict = hungarianMatching(curr, prev)
+        clusters_series.replace({str(t) : clusterMatchDict}, inplace = True)
+    
+    return clusters_series
 
 
 class ClusteringModels:
