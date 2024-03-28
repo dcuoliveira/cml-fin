@@ -119,12 +119,7 @@ def run_forecast(data: pd.DataFrame,
                 clusters_series.append(dfLabels)
             # monthly clusters        
             clusters_series = pd.concat(clusters_series, axis = 1)
-            
-            for t in range(1, clusters_series.shape[1]):
-                curr, prev = clusters_series[str(t)], clusters_series[str(t - 1)]
-                clusterMatchDict = matchClusters(curr, prev)
-                clusters_series.replace({str(t) : clusterMatchDict}, inplace = True)
-                
+            matchClusters(clusters_series)
             clusters_series.to_parquet(clusters_path)
 
     predictions = []
