@@ -88,13 +88,22 @@ def run_forecast(data: pd.DataFrame,
     
     cm = ClusteringModels()
 
-    if (fs_method != "lasso") and rolling_cluster:
-        clusters_path = join(os.path.dirname(os.path.dirname(__file__)),
-                             "data",
-                             "inputs",
-                             "clusters",
-                             clustering_method,
-                             str(n_clusters))
+    if rolling_cluster:
+        if n_clusters == 0:
+            clusters_path = join(os.path.dirname(os.path.dirname(__file__)),
+                                "data",
+                                "inputs",
+                                "clusters",
+                                clustering_method,
+                                str(n_clusters),
+                                opt_k_method)
+        else:
+            clusters_path = join(os.path.dirname(os.path.dirname(__file__)),
+                                "data",
+                                "inputs",
+                                "clusters",
+                                clustering_method,
+                                str(n_clusters))
         if not n_clusters:
                 clusters_path = join(clusters_path, str(cluster_threshold))
         os.makedirs(clusters_path, exist_ok = True)
@@ -104,7 +113,7 @@ def run_forecast(data: pd.DataFrame,
             clusters_series = pd.read_parquet(clusters_path)
         else:
             clusters_series = []
-            for step in tqdm(range(0, len(data) - estimation_window, 1), total=len(data) - estimation_window, desc="rolling {}: {}".format(fs_method, target)):
+            for step in tqdm(range(0, len(data) - estimation_window, 1), total=len(data) - estimation_window, desc="computing clusters {}: {}".format(fs_method, target)):
                 
                 if fix_start or (step == 0):
                     start = 0
@@ -129,7 +138,7 @@ def run_forecast(data: pd.DataFrame,
     predictions = []
     parents_of_target = []
     dags = {}
-    for step in tqdm(range(0, len(data) - estimation_window, 1), total=len(data) - estimation_window, desc="rolling {}: {}".format(fs_method, target)):
+    for step in tqdm(range(0, len(data) - estimation_window, 1), total=len(data) - estimation_window, desc="forecasting {}: {}".format(fs_method, target)):
 
         if fix_start or (step == 0):
             start = 0
