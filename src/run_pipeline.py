@@ -16,10 +16,11 @@ parser.add_argument("--beta_threshold", type=float, default=0.4)
 parser.add_argument("--pval_threshold", type=float, default=0.05)
 parser.add_argument("--fix_start", type=str, default=True)
 parser.add_argument("--incercept", type=str, default=True)
-parser.add_argument("--fs_method", type=str, default="var-lingam") # available - var-lingam, dynotears, lasso1, lasso2, pairwise-granger, multivariate-granger
-parser.add_argument("--opt_k_method", type=str, default="elbow") # available - eigen, sillhouette, elbow, no
+parser.add_argument("--fs_method", type=str, default="dynotears") # available - var-lingam, dynotears, lasso1, lasso2, pairwise-granger, multivariate-granger
+parser.add_argument("--opt_k_method", type=str, default="no") # available - eigen, sillhouette, elbow, no
 parser.add_argument("--clustering_method", type=str, default="rolling_kmeans") # available - kmeans, rolling_kmeans, spectral, rolling_spectral, no
-parser.add_argument("--n_clusters", type=int, default=0) # 0 for auto select k
+parser.add_argument("--n_clusters", type=int, default=5) # 0 for auto select k
+parser.add_argument("--intra_cluster_selection", type=str, default="pca") # available - rank, pca
 parser.add_argument("--data_name", type=str, default="etfs_macro_large")
 parser.add_argument("--inputs_path", type=str, default=os.path.join(os.path.dirname(__file__), "data", "inputs"))
 parser.add_argument("--outputs_path", type=str, default=os.path.join(os.path.dirname(__file__), "data", "outputs"))
@@ -59,7 +60,8 @@ if __name__ == "__main__":
                                fs_method=args.fs_method,
                                opt_k_method=args.opt_k_method,
                                clustering_method=args.clustering_method,
-                               n_clusters=args.n_clusters)
+                               n_clusters=args.n_clusters,
+                               intra_cluster_selection=args.intra_cluster_selection)
 
         results['args'] = args
 
