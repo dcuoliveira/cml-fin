@@ -75,7 +75,12 @@ def run_forecast(data: pd.DataFrame,
                  opt_k_method: str,
                  clustering_method: str,
                  n_clusters: int = 0,
-                 cluster_threshold: float = 0.8):
+                 cluster_threshold: float = 0.8,
+                 intra_cluster_selection: str = "rank"):
+    
+    # sanity check causal representation learning method
+    if (intra_cluster_selection == "pca") and ((clustering_method == "no") or (n_clusters ==0)):
+        raise Exception("Causal Representation Learning Warning: intra_cluster_selection=pca can only be used with clustering_method!=no")
     
     # check if to use clustering or not, and if clustering is rolling or not
     if (clustering_method == "no") or (len(clustering_method.split("_")) == 1):
@@ -146,6 +151,7 @@ def run_forecast(data: pd.DataFrame,
             start += 1
 
         train_df = data.iloc[start:(estimation_window + step), :]
+        test_df = data.iloc[start:(estimation_window + step + 1), :]
 
         # compute within c1luster correlation
         if clustering_method != "no":
@@ -157,20 +163,34 @@ def run_forecast(data: pd.DataFrame,
                 clusters = cm.compute_clusters(data=data, target=target, n_clusters=n_clusters, clustering_method=clustering_method)  
                 labelled_clusters = cm.add_cluster_description(clusters=clusters)
             
-            ranks = cm.compute_within_cluster_corr_rank(data=train_df,
-                                                        target=target,
-                                                        labelled_clusters=labelled_clusters,
-                                                        correl_window=correl_window)      
+            if intra_cluster_selection == "rank":
+                ranks = cm.compute_within_cluster_corr_rank(data=train_df,
+                                                            target=target,
+                                                            labelled_clusters=labelled_clusters,
+                                                            correl_window=correl_window)
+                # select features and time window
+                last_row = pd.DataFrame(ranks.iloc[-1])
+                selected_columns = list(last_row[last_row == 1].dropna().index)
+            elif intra_cluster_selection == "pca":
+                train_pcs_df = cm.compute_within_cluster_pca(data=train_df,
+                                                             labelled_clusters=labelled_clusters,
+                                                             n_pcs=1)
+                
+                test_pcs_df = cm.compute_within_cluster_pca(data=test_df,
+                                                            labelled_clusters=labelled_clusters,
+                                                            n_pcs=1)
 
-            # select features and time window
-            last_row = pd.DataFrame(ranks.iloc[-1])
-            selected_columns = list(last_row[last_row == 1].dropna().index)
+                train_df = pd.concat([train_df, train_pcs_df], axis=1)
+                test_df = pd.concat([test_df, test_pcs_df], axis=1)
+                selected_columns = list(train_pcs_df.columns)
+            else:
+                raise Exception(f"method not registered: {intra_cluster_selection}")
         else:
             labelled_clusters = pd.DataFrame([{"fred": target, "cluster": 1, "description": target}])
             selected_columns = list(train_df.drop([target], axis=1).columns)
 
         train_df = train_df[[target] + selected_columns]
-        test_df = data[[target] + selected_columns].iloc[(estimation_window + step - p):(estimation_window + step + 1), :]
+        test_df = test_df[[target] + selected_columns].iloc[(estimation_window + step - p):(estimation_window + step + 1), :]
 
         # zscore of data
         mean = train_df.mean()
