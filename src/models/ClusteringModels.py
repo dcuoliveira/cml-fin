@@ -5,16 +5,16 @@ import numpy as np
 from sklearn.metrics import silhouette_score, jaccard_score
 from scipy.optimize import linear_sum_assignment
 import itertools
+from kneed import KneeLocator
 
-
-def matchClusters(row, col):
+def hungarianMatching(row, col):
     labelRow, labelCol = list(set(row)), list(set(col))
     m, n = len(labelRow), len(labelCol)
     mat = np.zeros(shape = (m, n))
     for i, rl in enumerate(labelRow):
         for j, cl in enumerate(labelCol):
             mat[i, j] = jaccard_score(row == rl, col == cl)    
-    clusterDict = {labelRow[i] : labelCol[j] for i, j in zip(*linear_sum_assignment(mat))}
+    clusterDict = {labelRow[i] : labelCol[j] for i, j in zip(*linear_sum_assignment(mat, maximize = True))}
     if m > n:
         freeLabels = list(set(range(max(m, max(labelCol) + 1))) - set(clusterDict.values()))
         indL = 0
@@ -24,6 +24,17 @@ def matchClusters(row, col):
                 indL += 1
     return clusterDict
 
+
+def matchClusters(clusters_series, inplace = True):
+    if not inplace:
+        clusters_series = clusters_series.copy()
+        
+    for t in range(1, clusters_series.shape[1]):
+        curr, prev = clusters_series[str(t)], clusters_series[str(t - 1)]
+        clusterMatchDict = hungarianMatching(curr, prev)
+        clusters_series.replace({str(t) : clusterMatchDict}, inplace = True)
+    
+    return clusters_series
 
 
 class ClusteringModels:
@@ -46,6 +57,60 @@ class ClusteringModels:
         clusters = spectral_mathod(n_clusters = n_clusters).fit((input).to_numpy())
 
         return clusters
+
+    def elbow(self, input: pd.DataFrame, max_k: int = 20, max_iter: int = 300, n_init: int = 10):
+        """
+        Compute optimal number of clusters using elbow method.
+
+        Parameters
+        ----------
+        data : np.array
+            Input data.
+
+        Returns
+        -------
+        k_opt : int
+            Optimal number of clusters.
+        """
+
+        # using the Elbow method to find the optimal number of clusters
+        wcss = []  # Within-cluster sum of squares
+        for i in range(1, max_k+1):
+            kmeans = KMeans(n_clusters=i, init='k-means++', max_iter=max_iter, n_init=n_init, random_state=0)
+            kmeans.fit(input)
+            wcss.append(kmeans.inertia_)
+
+        # determine the optimal number of clusters using KneeLocator
+        kn = KneeLocator(range(1, max_k+1), wcss, curve='convex', direction='decreasing')
+        optimal_k = kn.knee
+
+        return optimal_k
+
+    def silhouette(self, input: pd.DataFrame, max_k: int = 20, max_iter: int = 300, n_init: int = 10):
+        """
+        Compute optimal number of clusters using silhouette method.
+
+        Parameters
+        ----------
+        data : np.array
+            Input data.
+
+        Returns
+        -------
+        k_opt : int
+            Optimal number of clusters.
+        """
+
+        # using the silhouette method to find the optimal number of clusters
+        silhouette = []
+        for i in range(2, max_k+1):
+            kmeans = KMeans(n_clusters=i, init='k-means++', max_iter=max_iter, n_init=n_init, random_state=0)
+            kmeans.fit(input)
+            silhouette.append(silhouette_score(input, kmeans.labels_))
+        
+        optimal_k = np.argmax(silhouette) + 2
+
+        return optimal_k
     
     def add_cluster_description(self, clusters, match_cluster_labels: bool = True):
         self.permutations = list(itertools.permutations(range(self.k)))
@@ -54,19 +119,19 @@ class ClusteringModels:
         labelled_clusters.sort_values(by="cluster")
         labelled_clusters = pd.merge(labelled_clusters, self.fred_des[["fred", "description"]], on='fred')
 
-        if match_cluster_labels:
-            if self.prev_centroid_map is None:
-                self.prev_centroid_map = labelled_clusters["cluster"].values[:-1]
-            cur_min = np.inf
-            best_perm = None
-            for cur_perm in self.permutations:
-                # replace the cluster labels with the candidate permutation and compare with the previous cluster labels
-                cur_count = (labelled_clusters["cluster"].replace(range(0, self.k), cur_perm)[:-1] != self.prev_centroid_map).sum()
-                cur_count = cur_count / (len(labelled_clusters) - 1)
-                if cur_count < cur_min:
-                    cur_min = cur_count
-                    best_perm = cur_perm
-            labelled_clusters["cluster"] = labelled_clusters["cluster"].replace(range(0, self.k), best_perm)
+        # if match_cluster_labels:
+        #     if self.prev_centroid_map is None:
+        #         self.prev_centroid_map = labelled_clusters["cluster"].values[:-1]
+        #     cur_min = np.inf
+        #     best_perm = None
+        #     for cur_perm in self.permutations:
+        #         # replace the cluster labels with the candidate permutation and compare with the previous cluster labels
+        #         cur_count = (labelled_clusters["cluster"].replace(range(0, self.k), cur_perm)[:-1] != self.prev_centroid_map).sum()
+        #         cur_count = cur_count / (len(labelled_clusters) - 1)
+        #         if cur_count < cur_min:
+        #             cur_min = cur_count
+        #             best_perm = cur_perm
+        #     labelled_clusters["cluster"] = labelled_clusters["cluster"].replace(range(0, self.k), best_perm)
         
         return labelled_clusters
 
@@ -75,16 +140,21 @@ class ClusteringModels:
                          target: str, 
                          clustering_method: str, 
                          n_clusters: int = 0, 
-                         method: str = "spectral",
-                         threshold: float = 0.8):
+                         opt_k_method: str = "eigen",
+                         threshold: float = 0.8,
+                         max_k: int = 20):
 
         input = data.drop([target], axis=1).corr()
         self.feature_names = list(input.columns)
         self.k = n_clusters
 
-        if not n_clusters:
-            if method == "spectral":
+        if n_clusters == 0:
+            if opt_k_method == "eigen":
                 n_clusters = threshold_variance_explained(input, threshold)
+            elif opt_k_method == "silhouette":
+                n_clusters = self.silhouette(input, max_k)
+            elif opt_k_method == "elbow":
+                n_clusters = self.elbow(input, max_k)
             else:
                 raise ValueError("n_clusters method not supported")
         

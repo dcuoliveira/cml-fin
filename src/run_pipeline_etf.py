@@ -1,6 +1,7 @@
 import argparse
 import pandas as pd
 import os
+import time
 
 from forecast.forecast_funcs import run_forecast
 from metadata.etfs import etfs_large, etfs_small
@@ -12,18 +13,22 @@ parser.add_argument("--target", type=str, default="SPY")
 parser.add_argument("--estimation_window", type=int, default=12 * 4)
 parser.add_argument("--p", type=int, default=1)
 parser.add_argument("--correl_window", type=int, default=100000) # all available data
-parser.add_argument("--beta_threshold", type=float, default=0.2)
+parser.add_argument("--beta_threshold", type=float, default=0.4)
 parser.add_argument("--pval_threshold", type=float, default=0.05)
-parser.add_argument("--fix_start", type=bool, default=True)
-parser.add_argument("--incercept", type=bool, default=True)
+parser.add_argument("--fix_start", type=str, default=True)
+parser.add_argument("--incercept", type=str, default=True)
 parser.add_argument("--fs_method", type=str, default="var-lingam")
-parser.add_argument("--cv_type", type=str, default="cv")
-parser.add_argument("--clustering_method", type=str, default="kmeans")
+parser.add_argument("--cv_type", type=str, default="no")
+parser.add_argument("--clustering_method", type=str, default="rolling_kmeans")
+parser.add_argument("--n_clusters", type=int, default=10)
 parser.add_argument("--data_name", type=str, default="etfs_macro_large")
 parser.add_argument("--inputs_path", type=str, default=os.path.join(os.path.dirname(__file__), "data", "inputs"))
 parser.add_argument("--outputs_path", type=str, default=os.path.join(os.path.dirname(__file__), "data", "outputs"))
 
 if __name__ == "__main__":
+
+    # start timer
+    start = time.time()
 
     args = parser.parse_args()
 
@@ -53,7 +58,8 @@ if __name__ == "__main__":
                             incercept=args.incercept,
                             fs_method=args.fs_method,
                             cv_type=args.cv_type,
-                            clustering_method=args.clustering_method)
+                            clustering_method=args.clustering_method,
+                            n_clusters=args.n_clusters)
 
     results['args'] = args
 
@@ -67,3 +73,6 @@ if __name__ == "__main__":
                                                                                                             args.correl_window,
                                                                                                             args.p))
     save_pickle(path=save_path, obj=results)
+
+    # print timer in minutes
+    print("Execution time: {} minutes".format((time.time() - start) / 60))

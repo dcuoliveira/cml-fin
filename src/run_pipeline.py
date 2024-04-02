@@ -16,10 +16,10 @@ parser.add_argument("--beta_threshold", type=float, default=0.4)
 parser.add_argument("--pval_threshold", type=float, default=0.05)
 parser.add_argument("--fix_start", type=str, default=True)
 parser.add_argument("--incercept", type=str, default=True)
-parser.add_argument("--fs_method", type=str, default="pairwise-granger")
-parser.add_argument("--cv_type", type=str, default="cv")
-parser.add_argument("--clustering_method", type=str, default="rolling_kmeans")
-parser.add_argument("--n_clusters", type=int, default=0)
+parser.add_argument("--fs_method", type=str, default="var-lingam") # available - var-lingam, dynotears, lasso, pairwise-granger, multivariate-granger
+parser.add_argument("--opt_k_method", type=str, default="eigen") # available - eigen, sillhouette, elbow, no
+parser.add_argument("--clustering_method", type=str, default="rolling_kmeans") # available - kmean, rolling_kmeans, spectral, rolling_spectral, no
+parser.add_argument("--n_clusters", type=int, default=0) # 0 for auto select k
 parser.add_argument("--data_name", type=str, default="etfs_macro_large")
 parser.add_argument("--inputs_path", type=str, default=os.path.join(os.path.dirname(__file__), "data", "inputs"))
 parser.add_argument("--outputs_path", type=str, default=os.path.join(os.path.dirname(__file__), "data", "outputs"))
@@ -57,19 +57,27 @@ if __name__ == "__main__":
                                pval_threshold=args.pval_threshold,
                                incercept=args.incercept,
                                fs_method=args.fs_method,
-                               cv_type=args.cv_type,
+                               opt_k_method=args.opt_k_method,
                                clustering_method=args.clustering_method,
                                n_clusters=args.n_clusters)
 
         results['args'] = args
 
+        # add rolling cluster tag
         if args.clustering_method == "no":
             out_fs_method = f"{args.fs_method}_nocluster"
         elif args.clustering_method == "rolling_kmeans":
-            out_fs_method = f"{args.fs_method}_rollingcluster"
+            out_fs_method = f"{args.fs_method}_rollingkmeans"
+        elif args.clustering_method == "rolling_spectral":
+            out_fs_method = f"{args.fs_method}_spectral"
         elif args.clustering_method == "kmeans":
-            out_fs_method = f"{args.fs_method}_cluster"
+            out_fs_method = f"{args.fs_method}_kmeans"
+        elif args.clustering_method == "spectral":
+            out_fs_method = f"{args.fs_method}_spectral"
+        else:
+            raise ValueError(f"Clustering method not recognized: {args.clustering_method}")
 
+        # add number of clusters tag
         if args.clustering_method == "no":
             pass
         elif (args.n_clusters != 0) and (args.clustering_method != "no"):
@@ -78,6 +86,14 @@ if __name__ == "__main__":
             out_fs_method += f"_kauto"
         else:
             raise ValueError(f"Clustering method not recognized: {args.clustering_method} and n_clusters: {args.n_clusters}")
+        
+        # add cv type tag
+        if ((args.n_clusters == 0) and (args.clustering_method != "no")) and (args.opt_k_method == "cv"):
+            out_fs_method += "_cv"
+        elif ((args.n_clusters == 0) and (args.clustering_method != "no")) and (args.opt_k_method == "eigen"):
+            out_fs_method += "_eigen"
+        else:
+            raise ValueError(f"Optimal k method type not recognized: {args.opt_k_method}")
 
         # check if results folder exists
         if not os.path.exists(os.path.join(args.outputs_path, out_fs_method, args.data_name)):
