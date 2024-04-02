@@ -89,12 +89,21 @@ def run_forecast(data: pd.DataFrame,
     cm = ClusteringModels()
 
     if rolling_cluster:
-        clusters_path = join(os.path.dirname(os.path.dirname(__file__)),
-                             "data",
-                             "inputs",
-                             "clusters",
-                             clustering_method,
-                             str(n_clusters))
+        if n_clusters == 0:
+            clusters_path = join(os.path.dirname(os.path.dirname(__file__)),
+                                "data",
+                                "inputs",
+                                "clusters",
+                                clustering_method,
+                                str(n_clusters),
+                                opt_k_method)
+        else:
+            clusters_path = join(os.path.dirname(os.path.dirname(__file__)),
+                                "data",
+                                "inputs",
+                                "clusters",
+                                clustering_method,
+                                str(n_clusters))
         if not n_clusters:
                 clusters_path = join(clusters_path, str(cluster_threshold))
         os.makedirs(clusters_path, exist_ok = True)
