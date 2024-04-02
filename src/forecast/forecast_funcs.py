@@ -88,7 +88,7 @@ def run_forecast(data: pd.DataFrame,
     
     cm = ClusteringModels()
 
-    if (fs_method != "lasso") and rolling_cluster:
+    if rolling_cluster:
         clusters_path = join(os.path.dirname(os.path.dirname(__file__)),
                              "data",
                              "inputs",
