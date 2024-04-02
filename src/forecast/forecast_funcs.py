@@ -72,7 +72,7 @@ def run_forecast(data: pd.DataFrame,
                  pval_threshold: float,
                  incercept: bool,
                  fs_method: str,
-                 cv_type: str,
+                 opt_k_method: str,
                  clustering_method: str,
                  n_clusters: int = 0,
                  cluster_threshold: float = 0.8):
@@ -112,7 +112,11 @@ def run_forecast(data: pd.DataFrame,
                     start += 1
                 
                 train_df = data.iloc[start:(estimation_window + step), :]
-                clusters = cm.compute_clusters(data = train_df, target=target, n_clusters=n_clusters, clustering_method=clustering_method)
+                clusters = cm.compute_clusters(data = train_df,
+                                               target=target,
+                                               n_clusters=n_clusters,
+                                               clustering_method=clustering_method,
+                                               opt_k_method=opt_k_method)
                 labelled_clusters = cm.add_cluster_description(clusters=clusters)
                 dfLabels = labelled_clusters.set_index("fred")[["cluster"]].copy()
                 dfLabels.columns = [str(step)]
@@ -248,7 +252,7 @@ def run_forecast(data: pd.DataFrame,
             model_fit = cv_opt(X=Xt_train,
                                y=yt_train,
                                model_wrapper=LassoWrapper(hyperparameter_space_method=method),
-                               cv_type=cv_type,
+                               cv_type="cv",
                                n_splits=2,
                                n_iter=10,
                                seed=2294,
