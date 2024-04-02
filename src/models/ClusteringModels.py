@@ -6,6 +6,8 @@ from sklearn.metrics import silhouette_score, jaccard_score
 from scipy.optimize import linear_sum_assignment
 import itertools
 from kneed import KneeLocator
+from sklearn.decomposition import PCA
+from sklearn.preprocessing import StandardScaler
 
 def hungarianMatching(row, col):
     labelRow, labelCol = list(set(row)), list(set(col))
@@ -203,7 +205,30 @@ class ClusteringModels:
         final_rank_df = pd.concat(rank_list, axis=1)
 
         return final_rank_df
+    
+    def compute_within_cluster_pca(self, data: pd.DataFrame, labelled_clusters: pd.DataFrame, n_pcs: int = 1):
+        pcs = []
+        for c in labelled_clusters['cluster'].unique():
+            clustes_variables = labelled_clusters.loc[labelled_clusters['cluster'] == c]['fred'].values
 
+            clusters_features_df = data[list(clustes_variables)]
+            clusters_features_df = clusters_features_df.dropna()
+
+            # scale data
+            scaler = StandardScaler()
+            scaled_clusters_features_df = scaler.fit_transform(clusters_features_df)
+
+            # compute pca
+            pca = PCA(n_components=n_pcs)
+            pca.fit(scaled_clusters_features_df)
+            df_pca = pca.transform(scaled_clusters_features_df)
+            
+            # get first eigenvector
+            first_pc_df = pd.DataFrame(df_pca, columns=[f"cluster{c}"], index=data.index)
+            pcs.append(first_pc_df)
+        pcs_df = pd.concat(pcs, axis=1)
+
+        return pcs_df
 
 def threshold_variance_explained(A, threshold):
     assert 0 <= threshold <= 1
