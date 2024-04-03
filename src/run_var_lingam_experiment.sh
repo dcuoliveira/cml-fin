@@ -1,10 +1,10 @@
-python run_pipeline.py --fs_method var-lingam --clustering_method rolling_kmeans --opt_k_method eigen --n_clusters 0
-python run_pipeline.py --fs_method var-lingam --clustering_method rolling_kmeans --opt_k_method sillhouette --n_clusters 0
-python run_pipeline.py --fs_method var-lingam --clustering_method rolling_kmeans --opt_k_method elbow --n_clusters 0
-python run_pipeline.py --fs_method var-lingam --clustering_method rolling_spectral --opt_k_method eigen --n_clusters 0
-python run_pipeline.py --fs_method var-lingam --clustering_method rolling_spectral --opt_k_method sillhouette --n_clusters 0
-python run_pipeline.py --fs_method var-lingam --clustering_method rolling_spectral --opt_k_method elbow --n_clusters 0
-python run_pipeline.py --fs_method var-lingam --clustering_method rolling_kmeans --opt_k_method no --n_clusters 5
-python run_pipeline.py --fs_method var-lingam --clustering_method rolling_kmeans --opt_k_method no --n_clusters 10
-python run_pipeline.py --fs_method var-lingam --clustering_method rolling_spectral --opt_k_method no --n_clusters 5
-python run_pipeline.py --fs_method var-lingam --clustering_method rolling_spectral --opt_k_method no --n_clusters 10
+python run_pipeline.py --fs_method var-lingam --clustering_method rolling_kmeans --opt_k_method eigen --n_clusters 0 --intra_cluster_selection rank
+python run_pipeline.py --fs_method var-lingam --clustering_method rolling_kmeans --opt_k_method sillhouette --n_clusters 0 --intra_cluster_selection rank
+python run_pipeline.py --fs_method var-lingam --clustering_method rolling_kmeans --opt_k_method elbow --n_clusters 0 --intra_cluster_selection rank
+python run_pipeline.py --fs_method var-lingam --clustering_method rolling_spectral --opt_k_method eigen --n_clusters 0 --intra_cluster_selection rank
+python run_pipeline.py --fs_method var-lingam --clustering_method rolling_spectral --opt_k_method sillhouette --n_clusters 0 --intra_cluster_selection rank
+python run_pipeline.py --fs_method var-lingam --clustering_method rolling_spectral --opt_k_method elbow --n_clusters 0 --intra_cluster_selection rank
+python run_pipeline.py --fs_method var-lingam --clustering_method rolling_kmeans --opt_k_method no --n_clusters 5 --intra_cluster_selection rank
+python run_pipeline.py --fs_method var-lingam --clustering_method rolling_kmeans --opt_k_method no --n_clusters 10 --intra_cluster_selection rank
+python run_pipeline.py --fs_method var-lingam --clustering_method rolling_spectral --opt_k_method no --n_clusters 5 --intra_cluster_selection rank
+python run_pipeline.py --fs_method var-lingam --clustering_method rolling_spectral --opt_k_method no --n_clusters 10 --intra_cluster_selection rank
