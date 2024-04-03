@@ -98,6 +98,14 @@ if __name__ == "__main__":
             out_fs_method += "_eigen"
         else:
             raise ValueError(f"Optimal k method type not recognized: {args.opt_k_method}")
+        
+        # add intra cluster selection tag
+        if args.intra_cluster_selection == "rank":
+            out_fs_method += "_rank"
+        elif args.intra_cluster_selection == "pca":
+            out_fs_method += "_pca"
+        else:
+            raise ValueError(f"Intra cluster selection method not recognized: {args.intra_cluster_selection}")
 
         # check if results folder exists
         if not os.path.exists(os.path.join(args.outputs_path, out_fs_method, args.data_name)):
