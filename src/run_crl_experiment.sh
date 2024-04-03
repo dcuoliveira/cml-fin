@@ -1,16 +1,16 @@
-python run_pipeline.py --fs_method dynotears --clustering_method rolling_kmeans --opt_k_method no --n_clusters 5
-python run_pipeline.py --fs_method dynotears --clustering_method rolling_kmeans --opt_k_method no --n_clusters 10
-python run_pipeline.py --fs_method dynotears --clustering_method rolling_spectral --opt_k_method no --n_clusters 5
-python run_pipeline.py --fs_method dynotears --clustering_method rolling_spectral --opt_k_method no --n_clusters 10
-python run_pipeline.py --fs_method var-lingam --clustering_method rolling_kmeans --opt_k_method no --n_clusters 5
-python run_pipeline.py --fs_method var-lingam --clustering_method rolling_kmeans --opt_k_method no --n_clusters 10
-python run_pipeline.py --fs_method var-lingam --clustering_method rolling_spectral --opt_k_method no --n_clusters 5
-python run_pipeline.py --fs_method var-lingam --clustering_method rolling_spectral --opt_k_method no --n_clusters 10
-python run_pipeline.py --fs_method pairwise-granger --clustering_method rolling_kmeans --opt_k_method no --n_clusters 5
-python run_pipeline.py --fs_method pairwise-granger --clustering_method rolling_kmeans --opt_k_method no --n_clusters 10
-python run_pipeline.py --fs_method pairwise-granger --clustering_method rolling_spectral --opt_k_method no --n_clusters 5
-python run_pipeline.py --fs_method pairwise-granger --clustering_method rolling_spectral --opt_k_method no --n_clusters 10
-python run_pipeline.py --fs_method multivariate-granger --clustering_method rolling_kmeans --opt_k_method no --n_clusters 5
-python run_pipeline.py --fs_method multivariate-granger --clustering_method rolling_kmeans --opt_k_method no --n_clusters 10
-python run_pipeline.py --fs_method multivariate-granger --clustering_method rolling_spectral --opt_k_method no --n_clusters 5
-python run_pipeline.py --fs_method multivariate-granger --clustering_method rolling_spectral --opt_k_method no --n_clusters 10
+python run_pipeline.py --fs_method dynotears --clustering_method rolling_kmeans --opt_k_method no --n_clusters 5 --intra_cluster_selection pca
+python run_pipeline.py --fs_method dynotears --clustering_method rolling_kmeans --opt_k_method no --n_clusters 10 --intra_cluster_selection pca
+python run_pipeline.py --fs_method dynotears --clustering_method rolling_spectral --opt_k_method no --n_clusters 5 --intra_cluster_selection pca
+python run_pipeline.py --fs_method dynotears --clustering_method rolling_spectral --opt_k_method no --n_clusters 10 --intra_cluster_selection pca
+python run_pipeline.py --fs_method var-lingam --clustering_method rolling_kmeans --opt_k_method no --n_clusters 5 --intra_cluster_selection pca
+python run_pipeline.py --fs_method var-lingam --clustering_method rolling_kmeans --opt_k_method no --n_clusters 10 --intra_cluster_selection pca
+python run_pipeline.py --fs_method var-lingam --clustering_method rolling_spectral --opt_k_method no --n_clusters 5 --intra_cluster_selection pca
+python run_pipeline.py --fs_method var-lingam --clustering_method rolling_spectral --opt_k_method no --n_clusters 10 --intra_cluster_selection pca
+python run_pipeline.py --fs_method pairwise-granger --clustering_method rolling_kmeans --opt_k_method no --n_clusters 5 --intra_cluster_selection pca
+python run_pipeline.py --fs_method pairwise-granger --clustering_method rolling_kmeans --opt_k_method no --n_clusters 10 --intra_cluster_selection pca
+python run_pipeline.py --fs_method pairwise-granger --clustering_method rolling_spectral --opt_k_method no --n_clusters 5 --intra_cluster_selection pca
+python run_pipeline.py --fs_method pairwise-granger --clustering_method rolling_spectral --opt_k_method no --n_clusters 10 --intra_cluster_selection pca
+python run_pipeline.py --fs_method multivariate-granger --clustering_method rolling_kmeans --opt_k_method no --n_clusters 5 --intra_cluster_selection pca
+python run_pipeline.py --fs_method multivariate-granger --clustering_method rolling_kmeans --opt_k_method no --n_clusters 10 --intra_cluster_selection pca
+python run_pipeline.py --fs_method multivariate-granger --clustering_method rolling_spectral --opt_k_method no --n_clusters 5 --intra_cluster_selection pca
+python run_pipeline.py --fs_method multivariate-granger --clustering_method rolling_spectral --opt_k_method no --n_clusters 10 --intra_cluster_selection pca
