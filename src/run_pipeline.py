@@ -100,9 +100,11 @@ if __name__ == "__main__":
             raise ValueError(f"Optimal k method type not recognized: {args.opt_k_method}")
         
         # add intra cluster selection tag
-        if args.intra_cluster_selection == "rank":
+        if args.clustering_method == "no":
+            pass
+        elif (args.intra_cluster_selection == "rank") and (args.clustering_method != "no"):
             out_fs_method += "_rank"
-        elif args.intra_cluster_selection == "pca":
+        elif (args.intra_cluster_selection == "pca") and (args.clustering_method != "no"):
             out_fs_method += "_pca"
         else:
             raise ValueError(f"Intra cluster selection method not recognized: {args.intra_cluster_selection}")
