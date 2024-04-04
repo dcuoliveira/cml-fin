@@ -71,7 +71,7 @@ if __name__ == "__main__":
         elif args.clustering_method == "rolling_kmeans":
             out_fs_method = f"{args.fs_method}_rollingkmeans"
         elif args.clustering_method == "rolling_spectral":
-            out_fs_method = f"{args.fs_method}_spectral"
+            out_fs_method = f"{args.fs_method}_rollingspectral"
         elif args.clustering_method == "kmeans":
             out_fs_method = f"{args.fs_method}_kmeans"
         elif args.clustering_method == "spectral":
