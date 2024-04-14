@@ -1,7 +1,18 @@
 import os
 import pandas as pd
-from sklearn.linear_model import Lasso
+from sklearn.linear_model import Lasso, LinearRegression
 import numpy as np
+
+class LinearRegressionWrapper():
+    def __init__(self, model_params={'fit_intercept': True}):
+
+        self.model_name = "linear_regression"
+        self.search_type = 'grid'
+        self.param_grid = {'fit_intercept': [True, False]}
+        if model_params is None:
+            self.ModelClass = LinearRegression()
+        else:
+            self.ModelClass = LinearRegression(**model_params)
 
 class LassoWrapper():
     def __init__(self, model_params={'fit_intercept': True, 'max_iter': 10000000}, hyperparameter_space_method="default"):
