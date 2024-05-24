@@ -27,7 +27,7 @@ except:
     print("rpy2 package not installed. You wont be able to run seqICP model.")
 
 from models.ClusteringModels import ClusteringModels, matchClusters
-from models.ModelClasses import LassoWrapper, LinearRegressionWrapper
+from models.ModelClasses import LassoWrapper, LinearRegressionWrapper, RandomForestWrapper
 
 
 def cv_opt(X, y, model_wrapper, cv_type, n_splits, n_iter, seed, verbose, n_jobs, scoring):
@@ -459,8 +459,11 @@ def run_forecast(data: pd.DataFrame,
                 data_train.drop(c, axis=1, inplace=True)
             Xt_train = data_train.dropna()
             Xt_test = data_test.dropna()
-        elif fs_method == "sfstscv":
-            model_wrapper = LinearRegressionWrapper(model_params={'fit_intercept': False})
+        elif (fs_method == "sfstscv") or fs_method == "sfstscv-rf":
+            if fs_method == "sfstscv":
+                model_wrapper = LinearRegressionWrapper(model_params={'fit_intercept': False})
+            elif fs_method == "sfstscv-rf":
+                model_wrapper = RandomForestWrapper()
             tscv = TimeSeriesSplit(n_splits=5)
             sfs_tscv = SequentialFeatureSelector(model_wrapper.ModelClass, cv=tscv, scoring="neg_mean_squared_error")
 
