@@ -3,7 +3,7 @@ from tqdm import tqdm
 from sklearn.model_selection import TimeSeriesSplit, KFold
 from sklearn.model_selection import RandomizedSearchCV, GridSearchCV
 from sklearn.metrics import make_scorer, mean_squared_error
-from sklearn.feature_selection import SequentialFeatureSelector
+from sklearn.feature_selection import SequentialFeatureSelector, RFECV
 import statsmodels.api as sm
 import lingam
 import numpy as np
@@ -484,6 +484,32 @@ def run_forecast(data: pd.DataFrame,
             fit_fs = sfs_tscv.fit(Xt_train, yt_train)
 
             selected_indices = sfs_tscv.get_support(indices=True)
+            selected_variables = Xt_train.columns[selected_indices]
+        elif (fs_method == "rfetscv") or fs_method == "rfetscv-rf":
+            if fs_method == "rfetscv":
+                model_wrapper = LinearRegressionWrapper(model_params={'fit_intercept': False})
+            elif fs_method == "rfetscv-rf":
+                model_wrapper = RandomForestWrapper()
+            tscv = TimeSeriesSplit(n_splits=5)
+            rfe_tscv = RFECV(model_wrapper.ModelClass, cv=tscv, scoring="neg_mean_squared_error")
+
+            Xt_train = pd.concat([yt_train, Xt_train], axis=1)
+            Xt_test = pd.concat([yt_test, Xt_test], axis=1)
+
+            # create lags of Xt variables
+            for c in Xt_train.columns:
+                for lag in range(1, p + 1):
+                    Xt_train["{}(t-{})".format(c, lag)] = Xt_train[c].shift(lag)
+                    Xt_test["{}(t-{})".format(c, lag)] = Xt_test[c].shift(lag)
+                
+                Xt_train.drop(c, axis=1, inplace=True)
+
+            Xt_train = Xt_train.dropna()
+            yt_train = yt_train.loc[Xt_train.index]
+
+            fit_fs = rfe_tscv.fit(Xt_train, yt_train)
+
+            selected_indices = rfe_tscv.get_support(indices=True)
             selected_variables = Xt_train.columns[selected_indices]
         elif fs_method == "sfscv":
             model_wrapper = LinearRegressionWrapper(model_params={'fit_intercept': False})
