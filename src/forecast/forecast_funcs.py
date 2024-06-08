@@ -251,7 +251,6 @@ def run_forecast(data: pd.DataFrame,
             data_train = add_and_keep_lags_only(data=data_train, lags=p)
             data_test = add_and_keep_lags_only(data=data_test, lags=p)
                 
-            data_train.drop(c, axis=1, inplace=True)
             Xt_train = data_train.dropna()
             Xt_test = data_test.dropna()
         elif (fs_method == "lasso1") or (fs_method == "lasso2"):
