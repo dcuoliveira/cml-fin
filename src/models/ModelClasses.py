@@ -48,10 +48,10 @@ class RandomForestWrapper():
     def __init__(self, model_params=None):
         self.model_name = "random_forest"
         self.search_type = 'random'
-        self.param_grid = {"max_features": ['auto', 'sqrt', 'log2'],
-                           "min_samples_split": sp_randint(2, 31),
-                           "n_estimators": sp_randint(2, 301),
-                           "max_depth": sp_randint(2, 20)}
+        self.param_grid = {'model__max_features': ['auto', 'sqrt', 'log2'],
+                           'model__min_samples_split': sp_randint(2, 31),
+                           'model__n_estimators': sp_randint(2, 301),
+                           'model__max_depth': sp_randint(2, 20)}
         if model_params is None:
             self.ModelClass = RandomForestRegressor()
         else:
