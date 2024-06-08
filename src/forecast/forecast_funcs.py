@@ -13,6 +13,9 @@ from statsmodels.api import OLS
 import os
 from os.path import join
 from sklearn.pipeline import Pipeline
+from tigramite import data_processing as pp
+from tigramite.independence_tests import cmiknn
+from tigramite.pcmci import PCMCI
 
 try:
     from causalnex.structure.dynotears import from_pandas_dynamic
@@ -476,7 +479,7 @@ def run_forecast(data: pd.DataFrame,
             )
 
             # fit model
-            fit_fs = random_search.fit(Xt_train.values[:,0:10], yt_train.values.ravel())
+            fit_fs = random_search.fit(Xt_train.values, yt_train.values.ravel())
 
             selected_indices = random_search.best_estimator_.named_steps['feature_selection'].get_support(indices=True)
             selected_variables = Xt_train.columns[selected_indices]
@@ -521,6 +524,35 @@ def run_forecast(data: pd.DataFrame,
 
             selected_indices = sfs.get_support(indices=True)
             selected_variables = Xt_train.columns[selected_indices]
+        if fs_method == "pcmci":
+            data_train = pd.concat([yt_train, Xt_train], axis=1)
+            data_test = pd.concat([yt_test, Xt_test], axis=1)
+
+            data_train_tigramite = pp.DataFrame(data_train.values, var_names=data_train.columns)
+
+            pcmci = PCMCI(dataframe=data_train_tigramite, cond_ind_test=cmiknn.CMIknn(), verbosity=0)
+            pcmci.run_pcmci(tau_min=0, tau_max=p, pc_alpha=pval_threshold)
+
+            parents_set = dict()
+            for effect in pcmci.all_parents.keys():
+                parents_set[pcmci.var_names[effect]] = []
+                for cause, t in pcmci.all_parents[effect]:
+                    parents_set[pcmci.var_names[effect]].append((pcmci.var_names[cause], t))
+
+            # build labels
+            selected_variables = []
+            if len(parents_set[target]) != 0:
+                for i in len(parents_set[target]):
+                    cause = parents_set[target][i][0]
+                    t = np.abs(parents_set[target][i][1])
+                    selected_variables.append(f"{cause}(t-{t})")
+
+            # create lags of Xt variables
+            data_train = add_and_keep_lags_only(data=data_train, lags=p)
+            data_test = add_and_keep_lags_only(data=data_test, lags=p)
+                
+            Xt_train = data_train.dropna()
+            Xt_test = data_test.dropna()
         else:
             raise Exception("fs method not registered")
 
