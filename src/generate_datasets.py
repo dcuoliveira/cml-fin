@@ -75,9 +75,9 @@ if __name__ == "__main__":
     small_returns_data = returns_data[small_etfs_index].dropna()
 
     # merge datasets
-    big_data = pd.merge(big_returns_data, fred_data, left_index=True, right_index=True).resample("MS").last()
-    mid_data = pd.merge(mid_returns_data, fred_data, left_index=True, right_index=True).resample("MS").last()
-    small_data = pd.merge(small_returns_data, fred_data, left_index=True, right_index=True).resample("MS").last()
+    big_data = pd.merge(big_returns_data, fred_data, left_index=True, right_index=True).resample("MS").last().ffill()
+    mid_data = pd.merge(mid_returns_data, fred_data, left_index=True, right_index=True).resample("MS").last().ffill()
+    small_data = pd.merge(small_returns_data, fred_data, left_index=True, right_index=True).resample("MS").last().ffill()
 
     # save datasets
     big_data.to_csv(os.path.join(os.path.dirname(__file__), "data", "inputs", "etfs_macro_large.csv"))
