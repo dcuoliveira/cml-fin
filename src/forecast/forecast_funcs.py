@@ -29,7 +29,7 @@ except:
 
 from models.ClusteringModels import ClusteringModels, matchClusters
 from models.ModelClasses import LassoWrapper, LinearRegressionWrapper, RandomForestWrapper
-
+from utils.parsers import add_and_keep_lags_only
 
 def cv_opt(X, y, model_wrapper, cv_type, n_splits, n_iter, seed, verbose, n_jobs, scoring):
 
@@ -248,12 +248,10 @@ def run_forecast(data: pd.DataFrame,
             dags.update(dict_)
 
             # create lags of Xt variables
-            for c in data_train.columns:
-                for lag in range(1, p + 1):
-                    data_train["{}(t-{})".format(c, lag)] = data_train[c].shift(lag)
-                    data_test["{}(t-{})".format(c, lag)] = data_test[c].shift(lag)
+            data_train = add_and_keep_lags_only(data=data_train, lags=p)
+            data_test = add_and_keep_lags_only(data=data_test, lags=p)
                 
-                data_train.drop(c, axis=1, inplace=True)
+            data_train.drop(c, axis=1, inplace=True)
             Xt_train = data_train.dropna()
             Xt_test = data_test.dropna()
         elif (fs_method == "lasso1") or (fs_method == "lasso2"):
@@ -261,12 +259,8 @@ def run_forecast(data: pd.DataFrame,
             Xt_test = pd.concat([yt_test, Xt_test], axis=1)
 
             # create lags of Xt variables
-            for c in Xt_train.columns:
-                for lag in range(1, p + 1):
-                    Xt_train["{}(t-{})".format(c, lag)] = Xt_train[c].shift(lag)
-                    Xt_test["{}(t-{})".format(c, lag)] = Xt_test[c].shift(lag)
-                
-                Xt_train.drop(c, axis=1, inplace=True)
+            data_train = add_and_keep_lags_only(data=data_train, lags=p)
+            data_test = add_and_keep_lags_only(data=data_test, lags=p)
 
             Xt_train = Xt_train.dropna()
             yt_train = yt_train.loc[Xt_train.index]
@@ -324,12 +318,9 @@ def run_forecast(data: pd.DataFrame,
                         selected_variables += [f"{colname}(t-{lag})"]
 
             # create lags of Xt variables
-            for c in data_train.columns:
-                for lag in range(1, p + 1):
-                    data_train["{}(t-{})".format(c, lag)] = data_train[c].shift(lag)
-                    data_test["{}(t-{})".format(c, lag)] = data_test[c].shift(lag)
-                
-                data_train.drop(c, axis=1, inplace=True)
+            data_train = add_and_keep_lags_only(data=data_train, lags=p)
+            data_test = add_and_keep_lags_only(data=data_test, lags=p)
+
             Xt_train = data_train.dropna()
             Xt_test = data_test.dropna()
         elif fs_method == "multivariate-granger":
@@ -349,12 +340,9 @@ def run_forecast(data: pd.DataFrame,
                             selected_variables += [f"{colname}(t-{lag})"]               
 
             # create lags of Xt variables
-            for c in data_train.columns:
-                for lag in range(1, p + 1):
-                    data_train["{}(t-{})".format(c, lag)] = data_train[c].shift(lag)
-                    data_test["{}(t-{})".format(c, lag)] = data_test[c].shift(lag)
-                
-                data_train.drop(c, axis=1, inplace=True)
+            data_train = add_and_keep_lags_only(data=data_train, lags=p)
+            data_test = add_and_keep_lags_only(data=data_test, lags=p)
+
             Xt_train = data_train.dropna()
             Xt_test = data_test.dropna()
         elif fs_method == "dynotears":
@@ -405,12 +393,9 @@ def run_forecast(data: pd.DataFrame,
             # dags.update(dict_)
 
             # create lags of Xt variables
-            for c in data_train.columns:
-                for lag in range(1, p + 1):
-                    data_train["{}(t-{})".format(c, lag)] = data_train[c].shift(lag)
-                    data_test["{}(t-{})".format(c, lag)] = data_test[c].shift(lag)
-                
-                data_train.drop(c, axis=1, inplace=True)
+            data_train = add_and_keep_lags_only(data=data_train, lags=p)
+            data_test = add_and_keep_lags_only(data=data_test, lags=p)
+
             Xt_train = data_train.dropna()
             Xt_test = data_test.dropna()
         elif fs_method == "seqICP":
@@ -450,14 +435,11 @@ def run_forecast(data: pd.DataFrame,
                 selected_variables = list(data_train.drop(target, axis=1).columns[(parent_set - 1)])
             else:
                 selected_variables = []
-
+            
             # create lags of Xt variables
-            for c in data_train.columns:
-                for lag in range(1, p + 1):
-                    data_train["{}(t-{})".format(c, lag)] = data_train[c].shift(lag)
-                    data_test["{}(t-{})".format(c, lag)] = data_test[c].shift(lag)
-                
-                data_train.drop(c, axis=1, inplace=True)
+            add_and_keep_lags_only(data=data_train, lags=p)
+            add_and_keep_lags_only(data=data_test, lags=p)
+            
             Xt_train = data_train.dropna()
             Xt_test = data_test.dropna()
         elif (fs_method == "sfstscv") or fs_method == "sfstscv-rf":
@@ -472,12 +454,8 @@ def run_forecast(data: pd.DataFrame,
             Xt_test = pd.concat([yt_test, Xt_test], axis=1)
 
             # create lags of Xt variables
-            for c in Xt_train.columns:
-                for lag in range(1, p + 1):
-                    Xt_train["{}(t-{})".format(c, lag)] = Xt_train[c].shift(lag)
-                    Xt_test["{}(t-{})".format(c, lag)] = Xt_test[c].shift(lag)
-                
-                Xt_train.drop(c, axis=1, inplace=True)
+            Xt_train = add_and_keep_lags_only(data=Xt_train, lags=p)
+            Xt_test = add_and_keep_lags_only(data=Xt_test, lags=p)
 
             Xt_train = Xt_train.dropna()
             yt_train = yt_train.loc[Xt_train.index]
@@ -511,16 +489,13 @@ def run_forecast(data: pd.DataFrame,
             tscv = TimeSeriesSplit(n_splits=5)
             rfe_tscv = RFECV(model_wrapper.ModelClass, cv=tscv, scoring="neg_mean_squared_error")
 
-            Xt_train = pd.concat([yt_train, Xt_train], axis=1)
-            Xt_test = pd.concat([yt_test, Xt_test], axis=1)
+            # create lags of Xt variables
+            Xt_train = add_and_keep_lags_only(data=Xt_train, lags=p)
+            Xt_test = add_and_keep_lags_only(data=Xt_test, lags=p)
 
             # create lags of Xt variables
-            for c in Xt_train.columns:
-                for lag in range(1, p + 1):
-                    Xt_train["{}(t-{})".format(c, lag)] = Xt_train[c].shift(lag)
-                    Xt_test["{}(t-{})".format(c, lag)] = Xt_test[c].shift(lag)
-                
-                Xt_train.drop(c, axis=1, inplace=True)
+            add_and_keep_lags_only(data=Xt_train, lags=p)
+            add_and_keep_lags_only(data=Xt_test, lags=p)
 
             Xt_train = Xt_train.dropna()
             yt_train = yt_train.loc[Xt_train.index]
@@ -537,12 +512,8 @@ def run_forecast(data: pd.DataFrame,
             Xt_test = pd.concat([yt_test, Xt_test], axis=1)
 
             # create lags of Xt variables
-            for c in Xt_train.columns:
-                for lag in range(1, p + 1):
-                    Xt_train["{}(t-{})".format(c, lag)] = Xt_train[c].shift(lag)
-                    Xt_test["{}(t-{})".format(c, lag)] = Xt_test[c].shift(lag)
-                
-                Xt_train.drop(c, axis=1, inplace=True)
+            add_and_keep_lags_only(data=Xt_train, lags=p)
+            add_and_keep_lags_only(data=Xt_test, lags=p)
 
             Xt_train = Xt_train.dropna()
             yt_train = yt_train.loc[Xt_train.index]
