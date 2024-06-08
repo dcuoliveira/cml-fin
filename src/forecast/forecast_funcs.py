@@ -12,6 +12,7 @@ from statsmodels.tsa.api import VAR
 from statsmodels.api import OLS
 import os
 from os.path import join
+from sklearn.pipeline import Pipeline
 
 try:
     from causalnex.structure.dynotears import from_pandas_dynamic
@@ -465,7 +466,7 @@ def run_forecast(data: pd.DataFrame,
             elif fs_method == "sfstscv-rf":
                 model_wrapper = RandomForestWrapper()
             tscv = TimeSeriesSplit(n_splits=5)
-            sfs_tscv = SequentialFeatureSelector(model_wrapper.ModelClass, cv=tscv, scoring="neg_mean_squared_error")
+            sfs_tscv = SequentialFeatureSelector(model_wrapper.ModelClass, cv=tscv)
 
             Xt_train = pd.concat([yt_train, Xt_train], axis=1)
             Xt_test = pd.concat([yt_test, Xt_test], axis=1)
@@ -481,9 +482,26 @@ def run_forecast(data: pd.DataFrame,
             Xt_train = Xt_train.dropna()
             yt_train = yt_train.loc[Xt_train.index]
 
-            fit_fs = sfs_tscv.fit(Xt_train, yt_train)
+            # define the pipeline
+            pipeline = Pipeline([
+                ('feature_selection', sfs_tscv),
+                ('model', model_wrapper.ModelClass)
+            ])
 
-            selected_indices = sfs_tscv.get_support(indices=True)
+            # define random search
+            random_search = RandomizedSearchCV(
+                estimator=pipeline,
+                param_distributions=model_wrapper.param_grid,
+                n_iter=1,
+                cv=tscv,
+                n_jobs=-1,
+                scoring='neg_mean_squared_error'
+            )
+
+            # fit model
+            fit_fs = random_search.fit(Xt_train.values, yt_train.values.ravel())
+
+            selected_indices = random_search.get_support(indices=True)
             selected_variables = Xt_train.columns[selected_indices]
         elif (fs_method == "rfetscv") or fs_method == "rfetscv-rf":
             if fs_method == "rfetscv":
@@ -507,7 +525,7 @@ def run_forecast(data: pd.DataFrame,
             Xt_train = Xt_train.dropna()
             yt_train = yt_train.loc[Xt_train.index]
 
-            fit_fs = rfe_tscv.fit(Xt_train, yt_train)
+            fit_fs = rfe_tscv.fit(Xt_train.values, yt_train.values.ravel())
 
             selected_indices = rfe_tscv.get_support(indices=True)
             selected_variables = Xt_train.columns[selected_indices]
