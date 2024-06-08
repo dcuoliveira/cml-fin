@@ -442,8 +442,8 @@ def run_forecast(data: pd.DataFrame,
             
             Xt_train = data_train.dropna()
             Xt_test = data_test.dropna()
-        elif (fs_method == "sfstscv") or fs_method == "sfstscv-rf":
-            if fs_method == "sfstscv":
+        elif (fs_method == "sfstscv-lin") or fs_method == "sfstscv-rf":
+            if fs_method == "sfstscv-lin":
                 model_wrapper = LinearRegressionWrapper(model_params={'fit_intercept': False})
             elif fs_method == "sfstscv-rf":
                 model_wrapper = RandomForestWrapper()
@@ -481,8 +481,8 @@ def run_forecast(data: pd.DataFrame,
 
             selected_indices = random_search.best_estimator_.named_steps['feature_selection'].get_support(indices=True)
             selected_variables = Xt_train.columns[selected_indices]
-        elif (fs_method == "rfetscv") or fs_method == "rfetscv-rf":
-            if fs_method == "rfetscv":
+        elif (fs_method == "rfetscv-lin") or fs_method == "rfetscv-rf":
+            if fs_method == "rfetscv-lin":
                 model_wrapper = LinearRegressionWrapper(model_params={'fit_intercept': False})
             elif fs_method == "rfetscv-rf":
                 model_wrapper = RandomForestWrapper()
@@ -504,7 +504,7 @@ def run_forecast(data: pd.DataFrame,
 
             selected_indices = rfe_tscv.get_support(indices=True)
             selected_variables = Xt_train.columns[selected_indices]
-        elif fs_method == "sfscv":
+        elif fs_method == "sfscv-lin":
             model_wrapper = LinearRegressionWrapper(model_params={'fit_intercept': False})
             sfs = SequentialFeatureSelector(model_wrapper.ModelClass, cv=5, scoring="neg_mean_squared_error")
 
