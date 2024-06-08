@@ -5,26 +5,25 @@ channels:
   - conda-forge
   - pytorch
 dependencies:
-  - python=3.7.0
-  - pip
-  - mkl < 2022
+  - python=3.8
+  - pip:
+    - ICPy
+    - lingam
+    - kneed
+    - git+https://github.com/jakobrunge/tigramite.git
+  - mkl <2022
   - pandas
   - openpyxl
   - numpy
-  - scipy
-  - pdblp
+  - scipy>=1.10.0
   - tqdm
   - jupyterlab
   - pytorch
-  - torchvision 
-  - torchaudio 
+  - torchvision
+  - torchaudio
   - scikit-learn
   - statsmodels
   - lightgbm
   - seaborn
   - causalnex
   - fastparquet
-  - pip:
-    - ICPy
-    - lingam
-    - kneed
