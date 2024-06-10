@@ -542,7 +542,7 @@ def run_forecast(data: pd.DataFrame,
             # build labels
             selected_variables = []
             if len(parents_set[target]) != 0:
-                for i in len(parents_set[target]):
+                for i in range(len(parents_set[target])):
                     cause = parents_set[target][i][0]
                     t = np.abs(parents_set[target][i][1])
                     selected_variables.append(f"{cause}(t-{t})")
