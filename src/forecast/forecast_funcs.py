@@ -476,7 +476,7 @@ def run_forecast(data: pd.DataFrame,
             )
 
             # fit model
-            fit_fs = random_search.fit(Xt_train.values[:,0:10], yt_train.values.ravel())
+            fit_fs = random_search.fit(Xt_train.values, yt_train.values.ravel())
 
             selected_indices = random_search.best_estimator_.named_steps['feature_selection'].get_support(indices=True)
             selected_variables = Xt_train.columns[selected_indices]
