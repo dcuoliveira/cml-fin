@@ -444,7 +444,7 @@ def run_forecast(data: pd.DataFrame,
             
             Xt_train = data_train.dropna()
             Xt_test = data_test.dropna()
-        elif (fs_method == "sfstscv-lin") or fs_method == "sfstscv-rf":
+        elif (fs_method == "sfstscv-lin") or (fs_method == "sfstscv-rf"):
             if fs_method == "sfstscv-lin":
                 model_wrapper = LinearRegressionWrapper(model_params={'fit_intercept': False})
             elif fs_method == "sfstscv-rf":
@@ -483,7 +483,7 @@ def run_forecast(data: pd.DataFrame,
 
             selected_indices = random_search.best_estimator_.named_steps['feature_selection'].get_support(indices=True)
             selected_variables = Xt_train.columns[selected_indices]
-        elif (fs_method == "rfetscv-lin") or fs_method == "rfetscv-rf":
+        elif (fs_method == "rfetscv-lin") or (fs_method == "rfetscv-rf"):
             if fs_method == "rfetscv-lin":
                 model_wrapper = LinearRegressionWrapper(model_params={'fit_intercept': False})
             elif fs_method == "rfetscv-rf":
@@ -554,7 +554,7 @@ def run_forecast(data: pd.DataFrame,
             Xt_train = data_train.dropna()
             Xt_test = data_test.dropna()
         else:
-            raise Exception("fs method not registered")
+            raise Exception(f"fs method not registered: {fs_method}")
 
         selected_variables_df = pd.DataFrame(1, index=selected_variables, columns=[Xt_test.index[-1]]).T
 
