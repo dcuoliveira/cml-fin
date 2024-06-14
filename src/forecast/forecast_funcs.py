@@ -189,7 +189,7 @@ def run_forecast(data: pd.DataFrame,
                 test_df = pd.concat([test_df, test_pcs_df], axis=1)
                 selected_columns = list(train_pcs_df.columns)
             else:
-                raise Exception(f"method not registered: {intra_cluster_selection}")
+                raise Exception(f"intra cluster selection method not registered: {intra_cluster_selection}")
         else:
             labelled_clusters = pd.DataFrame([{"fred": target, "cluster": 1, "description": target}])
             selected_columns = list(train_df.drop([target], axis=1).columns)
@@ -472,7 +472,7 @@ def run_forecast(data: pd.DataFrame,
             random_search = RandomizedSearchCV(
                 estimator=pipeline,
                 param_distributions=model_wrapper.param_grid,
-                n_iter=1,
+                n_iter=20,
                 cv=tscv,
                 n_jobs=-1,
                 scoring='neg_mean_squared_error'
