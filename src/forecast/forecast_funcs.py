@@ -524,7 +524,7 @@ def run_forecast(data: pd.DataFrame,
 
             selected_indices = sfs.get_support(indices=True)
             selected_variables = Xt_train.columns[selected_indices]
-        if fs_method == "pcmci":
+        elif fs_method == "pcmci":
             data_train = pd.concat([yt_train, Xt_train], axis=1)
             data_test = pd.concat([yt_test, Xt_test], axis=1)
 
