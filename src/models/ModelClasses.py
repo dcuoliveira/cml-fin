@@ -10,7 +10,7 @@ class LinearRegressionWrapper():
 
         self.model_name = "linear_regression"
         self.search_type = 'grid'
-        self.param_grid = {'fit_intercept': [True, False]}
+        self.param_grid = {'model__fit_intercept': [True, False]}
         if model_params is None:
             self.ModelClass = LinearRegression()
         else:
