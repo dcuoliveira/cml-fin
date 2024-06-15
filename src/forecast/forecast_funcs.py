@@ -13,14 +13,18 @@ from statsmodels.api import OLS
 import os
 from os.path import join
 from sklearn.pipeline import Pipeline
-from tigramite import data_processing as pp
-from tigramite.independence_tests import cmiknn
-from tigramite.pcmci import PCMCI
 
 try:
     from causalnex.structure.dynotears import from_pandas_dynamic
 except:
     print("causalnex package not installed. You wont be able to run dynotears model.") 
+
+try:
+    from tigramite import data_processing as pp
+    from tigramite.independence_tests import cmiknn
+    from tigramite.pcmci import PCMCI
+except:
+    print("tigramite package not installed. You wont be able to run pcmci model.")
 
 try:
     import rpy2.robjects as robjects
