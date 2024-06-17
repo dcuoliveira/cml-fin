@@ -453,7 +453,7 @@ def run_forecast(data: pd.DataFrame,
                 model_wrapper = LinearRegressionWrapper(model_params={'fit_intercept': False})
             elif fs_method == "sfstscv-rf":
                 model_wrapper = RandomForestWrapper()
-            tscv = TimeSeriesSplit(n_splits=5)
+            tscv = TimeSeriesSplit(n_splits=3)
             sfs_tscv = SequentialFeatureSelector(model_wrapper.ModelClass, cv=tscv)
 
             Xt_train = pd.concat([yt_train, Xt_train], axis=1)
