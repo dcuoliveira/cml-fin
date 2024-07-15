@@ -17,52 +17,10 @@ if __name__ == "__main__":
     transform = transform.drop(0)
     transform.columns = ["fred", "tcode"]
 
-    fred_desc = pd.read_csv(os.path.join(os.path.dirname(__file__), "data", "utils", "fredmd_description.csv"), sep=";")
-
-    fred_series = []
-    error_series = []
-
-    # Define today's date for ALFRED API queries
-    today = datetime.date.today().strftime('%Y-%m-%d')
-    for series_id in tqdm(all_series, desc="Fetching FRED data", total=len(all_series)):
-        try:
-            # Try fetching as usual (from FRED)
-            all_releases = fred.get_series_all_releases(series_id)
-        except Exception as e:
-            print(f"Error fetching {series_id} from ALFRED: {e}")
-            error_series.append(series_id)
-            continue
-
-        # Process and store data
-        all_releases_df = pd.DataFrame(all_releases)
-        all_releases_df.rename(columns={'realtime_start': 'actual_release_date', 'date': 'date', 'value': 'value'}, inplace=True)
-        fred_raw = all_releases_df[['actual_release_date', 'value']]
-        fred_raw.rename(columns={'actual_release_date': 'date', 'value': series_id}, inplace=True)
-        fred_raw["date"] = pd.to_datetime(fred_raw["date"])
-        fred_raw.set_index("date", inplace=True)
-        fred_raw[series_id] = pd.to_numeric(fred_raw[series_id], errors='coerce')
-
-        tcode = transform[transform["fred"] == series_id]["tcode"].iloc[0]
-        ttype = fred_desc[fred_desc["tcode"] == tcode]["ttype"].iloc[0]
-
-        if ttype == "First difference of natural log: ln(x)-ln(x-1)":
-            tmp = np.log(fred_raw[series_id]).diff()
-        elif ttype == "Level (i.e. no transformation): x(t)":
-            tmp = fred_raw[series_id]
-        elif ttype == "First difference: x(t)-x(t-1)":
-            tmp = fred_raw[series_id].diff()
-        elif ttype == "Natural log: ln(x)":
-            tmp = np.log(fred_raw[series_id])
-        elif ttype == "Second difference of natural log: (ln(x)-ln(x-1))-(ln(x-1)-ln(x-2))":
-            tmp = np.log(fred_raw[series_id]).diff(1) - np.log(fred_raw[series_id]).diff(2)
-        elif ttype == "First difference of percent change: (x(t)/x(t-1)-1)-(x(t-1)/x(t-2)-1)":
-            tmp = fred_raw[series_id].pct_change(1).diff() - fred_raw[series_id].pct_change(2).diff() 
-        else:
-            raise ValueError("Unknown transformation type")
-
-        fred_series.append(tmp.resample("B").last())
-
-    fred_data = pd.concat(fred_series, axis=1).ffill()
+    fred_data = pd.read_csv(os.path.join(os.path.dirname(__file__), "data", "inputs", "fredmd_transf.csv"), sep=",")
+    fred_data["date"] = pd.to_datetime(fred_data["date"])
+    fred_data.set_index("date", inplace=True)
+    fred_data = fred_data.shift(+1).resample("M").last()
 
     # load forecast data and preprocess
     etfs_data = pd.read_csv(os.path.join(os.path.dirname(__file__), "data", "inputs", "wrds_etf_returns.csv"))
