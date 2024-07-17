@@ -476,7 +476,7 @@ def run_forecast(data: pd.DataFrame,
             random_search = RandomizedSearchCV(
                 estimator=pipeline,
                 param_distributions=model_wrapper.param_grid,
-                n_iter=20,
+                n_iter=2 if fs_method == "sfstscv-lin" else 20,
                 cv=tscv,
                 n_jobs=-1,
                 scoring='neg_mean_squared_error'
