@@ -16,7 +16,7 @@ parser.add_argument("--beta_threshold", type=float, default=0.4)
 parser.add_argument("--pval_threshold", type=float, default=0.05)
 parser.add_argument("--fix_start", type=str, default=True)
 parser.add_argument("--incercept", type=str, default=True)
-parser.add_argument("--fs_method", type=str, default="pcmci", choices=["var-lingam", "dynotears", "lasso1", "lasso2", "pairwise-granger", "multivariate-granger", "sfstscv-lin", "sfstscv-rf", "rfetscv-lin", "rfetscv-rf", "pcmci"])
+parser.add_argument("--fs_method", type=str, default="lasso1", choices=["var-lingam", "dynotears", "lasso1", "lasso2", "pairwise-granger", "multivariate-granger", "sfstscv-lin", "sfstscv-rf", "rfetscv-lin", "rfetscv-rf", "pcmci"])
 parser.add_argument("--opt_k_method", type=str, default="no", choices=["eigen", "sillhouette", "elbow", "no"])
 parser.add_argument("--clustering_method", type=str, default="no", choices=["kmeans", "rolling_kmeans", "spectral", "rolling_spectral", "no"])
 parser.add_argument("--n_clusters", type=int, default=0) # 0 for auto select k
