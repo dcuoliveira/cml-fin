@@ -265,8 +265,8 @@ def run_forecast(data: pd.DataFrame,
             Xt_test = pd.concat([yt_test, Xt_test], axis=1)
 
             # create lags of Xt variables
-            data_train = add_and_keep_lags_only(data=data_train, lags=p)
-            data_test = add_and_keep_lags_only(data=data_test, lags=p)
+            Xt_train = add_and_keep_lags_only(data=Xt_train, lags=p)
+            Xt_test = add_and_keep_lags_only(data=Xt_test, lags=p)
 
             Xt_train = Xt_train.dropna()
             yt_train = yt_train.loc[Xt_train.index]
@@ -295,18 +295,10 @@ def run_forecast(data: pd.DataFrame,
             lasso_best_fit = model_fit.best_estimator_.fit(Xt_train, yt_train)
 
             # Get the features that have non-zero coefficients
-            selected_features = np.where(lasso_best_fit.coef_ != 0)[0]
-            Xt_train_selected = Xt_train[Xt_train.columns[selected_features]]
+            selected_coefs = np.where(lasso_best_fit.coef_ != 0)[0]
+            selected_variables = Xt_train.columns[selected_coefs]
 
-            if Xt_train_selected.shape[1] != 0:
-                # Fit OLS to the selected features to compute p-values
-                ols_model = OLS(yt_train, Xt_train_selected).fit()
-
-                B1_df = pd.DataFrame(ols_model.params, index=Xt_train_selected.columns, columns=[f"{target}(t)"]).sort_values(ascending=False, by=f"{target}(t)")
-
-                # select variables with beta > threshold
-                selected_variables = list(B1_df[ols_model.pvalues < pval_threshold].dropna().index)
-            else:
+            if len(selected_variables) == 0:
                 selected_variables = []
         elif fs_method == "pairwise-granger":
             data_train = pd.concat([yt_train, Xt_train], axis=1)
