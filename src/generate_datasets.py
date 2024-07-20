@@ -20,7 +20,7 @@ if __name__ == "__main__":
     fred_data = pd.read_csv(os.path.join(os.path.dirname(__file__), "data", "inputs", "fredmd_transf.csv"), sep=",")
     fred_data["date"] = pd.to_datetime(fred_data["date"])
     fred_data.set_index("date", inplace=True)
-    fred_data = fred_data.shift(+1).resample("M").last()
+    fred_data = fred_data.shift(+1).resample("BM").last()
 
     # load forecast data and preprocess
     etfs_data = pd.read_csv(os.path.join(os.path.dirname(__file__), "data", "inputs", "wrds_etf_returns.csv"))
@@ -29,6 +29,9 @@ if __name__ == "__main__":
     ## fix dates
     etfs_data["date"] = pd.to_datetime(etfs_data["date"])
     etfs_data = etfs_data.set_index("date")
+
+    ## resample returns to last business day of the month
+    etfs_data = etfs_data.resample("BM").last()
 
     # compute first non-nan index
     returns_data = etfs_data.copy()
