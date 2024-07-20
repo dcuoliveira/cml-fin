@@ -13,6 +13,7 @@ from statsmodels.api import OLS
 import os
 from os.path import join
 from sklearn.pipeline import Pipeline
+import warnings
 
 try:
     from causalnex.structure.dynotears import from_pandas_dynamic
