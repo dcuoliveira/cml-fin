@@ -307,7 +307,7 @@ def run_forecast(data: pd.DataFrame,
             selected_variables = []
             # run grander causality test for each feature
             for colname in data_train.columns:
-                test_result = grangercausalitytests(x=data_train[[target, colname]], maxlag=p, verbose=False, addconst=incercept)
+                test_result = grangercausalitytests(x=data_train[[target, colname]], maxlag=p, addconst=incercept)
 
                 # select variables with p-value < 0.05
                 for lag in test_result.keys():
