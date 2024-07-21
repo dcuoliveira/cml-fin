@@ -80,7 +80,7 @@ def run_forecast(data: pd.DataFrame,
                  p: int,
                  beta_threshold: float,
                  pval_threshold: float,
-                 incercept: bool,
+                 intercept: bool,
                  fs_method: str,
                  opt_k_method: str,
                  clustering_method: str,
@@ -311,7 +311,7 @@ def run_forecast(data: pd.DataFrame,
                 # suprass future warnings
                 with warnings.catch_warnings():
                     warnings.simplefilter("ignore")
-                    test_result = grangercausalitytests(x=data_train[[target, colname]], maxlag=p, verbose=False, addconst=incercept)
+                    test_result = grangercausalitytests(x=data_train[[target, colname]], maxlag=p, verbose=False, addconst=intercept)
 
                 # select variables with p-value < 0.05
                 for lag in test_result.keys():
@@ -449,7 +449,7 @@ def run_forecast(data: pd.DataFrame,
             Xt_test = data_test.dropna()
         elif (fs_method == "sfstscv-lin") or (fs_method == "sfstscv-rf"):
             if fs_method == "sfstscv-lin":
-                model_wrapper = LinearRegressionWrapper(model_params={'fit_intercept': False})
+                model_wrapper = LinearRegressionWrapper(model_params={'fit_intercept': intercept})
             elif fs_method == "sfstscv-rf":
                 model_wrapper = RandomForestWrapper()
             tscv = TimeSeriesSplit(n_splits=3)
@@ -587,7 +587,7 @@ def run_forecast(data: pd.DataFrame,
             Xt_selected_test = pd.concat(Xt_selected_test, axis=1)
             Xt_selected_test = Xt_selected_test.dropna()
 
-            if incercept:
+            if intercept:
                 Xt_selected_train["const"] = 1
                 Xt_selected_test["const"] = 1
 
