@@ -15,8 +15,8 @@ parser.add_argument("--correl_window", type=int, default=100000) # all available
 parser.add_argument("--beta_threshold", type=float, default=0.4)
 parser.add_argument("--pval_threshold", type=float, default=0.05)
 parser.add_argument("--fix_start", type=str, default=True)
-parser.add_argument("--incercept", type=str, default=True)
-parser.add_argument("--fs_method", type=str, default="lasso1", choices=["var-lingam", "dynotears", "lasso1", "lasso2", "pairwise-granger", "multivariate-granger", "sfstscv-lin", "sfstscv-rf", "rfetscv-lin", "rfetscv-rf", "pcmci"])
+parser.add_argument("--intercept", type=str, default=True)
+parser.add_argument("--fs_method", type=str, default="sfstscv-lin", choices=["var-lingam", "dynotears", "lasso1", "lasso2", "pairwise-granger", "multivariate-granger", "sfstscv-lin", "sfstscv-rf", "rfetscv-lin", "rfetscv-rf", "pcmci"])
 parser.add_argument("--opt_k_method", type=str, default="no", choices=["eigen", "sillhouette", "elbow", "no"])
 parser.add_argument("--clustering_method", type=str, default="no", choices=["kmeans", "rolling_kmeans", "spectral", "rolling_spectral", "no"])
 parser.add_argument("--n_clusters", type=int, default=0) # 0 for auto select k
@@ -31,7 +31,7 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     args.fix_start = str_2_bool(args.fix_start)
-    args.incercept = str_2_bool(args.incercept)
+    args.intercept = str_2_bool(args.intercept)
 
     data = pd.read_csv(os.path.join(args.inputs_path, f'{args.data_name}.csv'))
     
@@ -57,7 +57,7 @@ if __name__ == "__main__":
                             p=args.p,
                             beta_threshold=args.beta_threshold,
                             pval_threshold=args.pval_threshold,
-                            incercept=args.incercept,
+                            intercept=args.intercept,
                             fs_method=args.fs_method,
                             opt_k_method=args.opt_k_method,
                             clustering_method=args.clustering_method,
