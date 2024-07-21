@@ -330,7 +330,10 @@ def run_forecast(data: pd.DataFrame,
             data_test = pd.concat([yt_test, Xt_test], axis=1)
 
             # run grander causality test for each feature
-            var_fit = VAR(data_train).fit(maxlags=p)
+            # suprass value warnings
+            with warnings.catch_warnings():
+                warnings.simplefilter("ignore")
+                var_fit = VAR(data_train).fit(maxlags=p)
 
             # run grander causality test for each feature
             selected_variables = []
