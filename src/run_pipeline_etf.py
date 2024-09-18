@@ -24,7 +24,7 @@ parser.add_argument("--intra_cluster_selection", type=str, default="no", choices
 parser.add_argument("--data_name", type=str, default="monetary-policy-processed")
 parser.add_argument("--inputs_path", type=str, default=os.path.join(os.path.dirname(__file__), "data", "inputs"))
 parser.add_argument("--outputs_path", type=str, default=os.path.join(os.path.dirname(__file__), "data", "outputs"))
-parser.add_argument("--target", type=str, default="ldEXME", choices=etfs_large + ["ldEXME"])
+parser.add_argument("--target", type=str, default="ldEXME")
 
 if __name__ == "__main__":
 
