@@ -16,15 +16,15 @@ parser.add_argument("--beta_threshold", type=float, default=0.4)
 parser.add_argument("--pval_threshold", type=float, default=0.05)
 parser.add_argument("--fix_start", type=str, default=True)
 parser.add_argument("--incercept", type=str, default=True)
-parser.add_argument("--fs_method", type=str, default="pcmci", choices=["var-lingam", "dynotears", "lasso1", "lasso2", "pairwise-granger", "multivariate-granger", "sfstscv-lin", "sfstscv-rf", "rfetscv-lin", "rfetscv-rf", "pcmci"])
+parser.add_argument("--fs_method", type=str, default="sfstscv-rf", choices=["var-lingam", "dynotears", "lasso1", "lasso2", "pairwise-granger", "multivariate-granger", "sfstscv-lin", "sfstscv-rf", "rfetscv-lin", "rfetscv-rf", "pcmci"])
 parser.add_argument("--opt_k_method", type=str, default="no", choices=["eigen", "sillhouette", "elbow", "no"])
 parser.add_argument("--clustering_method", type=str, default="no", choices=["kmeans", "rolling_kmeans", "spectral", "rolling_spectral", "no"])
 parser.add_argument("--n_clusters", type=int, default=0) # 0 for auto select k
 parser.add_argument("--intra_cluster_selection", type=str, default="no", choices=["rank", "pca", "no"])
-parser.add_argument("--data_name", type=str, default="etfs_macro_large")
+parser.add_argument("--data_name", type=str, default="monetary-policy-processed")
 parser.add_argument("--inputs_path", type=str, default=os.path.join(os.path.dirname(__file__), "data", "inputs"))
 parser.add_argument("--outputs_path", type=str, default=os.path.join(os.path.dirname(__file__), "data", "outputs"))
-parser.add_argument("--target", type=str, default="SPY", choices=etfs_large)
+parser.add_argument("--target", type=str, default="ldEXME", choices=etfs_large + ["ldEXME"])
 
 if __name__ == "__main__":
 
@@ -34,6 +34,10 @@ if __name__ == "__main__":
     args.incercept = str_2_bool(args.incercept)
 
     data = pd.read_csv(os.path.join(args.inputs_path, f'{args.data_name}.csv'))
+
+    # fix columns
+    if "Unnamed: 0" in data.columns:
+        data = data.drop(["Unnamed: 0"], axis=1)
     
     # fix dates
     data["date"] = pd.to_datetime(data["date"])
@@ -43,11 +47,14 @@ if __name__ == "__main__":
 
     target = args.target
 
-    # select etfs to remove
-    removed_etfs = [etf for etf in etfs_large if etf != target]
+    if target != "ldEXME":
+        # select etfs to remove
+        removed_etfs = [etf for etf in etfs_large if etf != target]
 
-    # delete etfs
-    selected_data = data.drop(removed_etfs, axis=1)
+        # delete etfs
+        selected_data = data.drop(removed_etfs, axis=1)
+    else:
+        selected_data = data.copy()
 
     results = run_forecast(data=selected_data,
                             target=target,
