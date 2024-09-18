@@ -1,0 +1,203 @@
+```{r}
+rm(list=ls())
+library('here')
+library('dplyr')
+library('ggplot2')
+library("aTSA")
+library("lubridate")
+library("readr")
+library("data.table")
+library("tidyr")
+require("gridExtra")
+library("seqICP")
+library("lmtest")
+library("roll")
+```
+
+```{r}
+X <- read_csv(here('src', 'new_studies', 'processedData', 'chf_features.csv')) %>%
+  rename(date=`...1`) %>% as.data.table() %>% mutate(date=ym(date)) %>% drop_na() %>%
+  filter((date >= ymd('1999-07-01')) & (date <= ymd('2017-01-01')))
+y <- read.csv(here('src', 'new_studies', 'processedData', 'chf_target.csv')) %>%
+  rename(date=Date, EURCHF=M0_EUR1) %>% as.data.table() %>% mutate(date=ym(date)) %>% drop_na() %>%
+  filter((date >= ymd('1999-07-01')) & (date <= ymd('2017-01-01')))
+
+data <- merge(X, y, by='date')
+data_lag <- data %>%
+  select(-date) %>%
+  as.data.table() %>%
+  shift(1) %>%
+  as.data.table() %>%
+  setnames(paste0(names(data)[-grep("date", names(data))], "_lag1")) %>%
+  mutate(date=data$date) %>%
+  select(date, everything())
+data_lag <- merge(data, data_lag, by='date') %>% drop_na()
+```
+
+```{r}
+tail(y)
+```
+
+```{r}
+tail(X)
+```
+
+```{r}
+tail(data_lag)
+```
+
+
+```{r}
+ggplot(y, aes(x = date, y = EURCHF)) +
+  geom_line() +
+  theme_minimal() +
+  labs(title = 'CHF target variable', x = 'Time', y = 'Target')
+```
+
+```{r}
+melt_X <- melt(X, id.vars = 'date')
+ggplot(melt_X, aes(x = date, y = value, color = variable)) +
+  geom_line() +
+  theme_minimal() +
+  labs(title = 'CHF features', x = 'Time', y = 'Feature')
+```
+
+```{r}
+colnames(X)
+```
+## 1. Testing Stationarity
+
+On the application of Pfister et al. (2018) the authors seek to find instantaneous monthly causal predictors of the returns of EURCHF exchange rate.
+
+To do this the authors build a linear model of the EURCHF exchange rate as a function of lags of both the target and the features.
+
+The argument of the authors is based on testing invariance induced by:
+
+> 1. Changes in variance and mean of the residuals
+> 2. Changes in the coefficients of the DGP`
+
+```{r}
+formula_X <- paste0("`", paste(names(data_lag)[-grep("EURCHF|date", names(data))], collapse="` + `"), "`")
+fomula <- paste(paste("EURCHF", "~", formula_X), " -1")
+model <- lm(fomula, data=data_lag %>% select(-date))
+residual_df <- residuals(model) %>%
+  as.data.table() %>%
+  setnames('residual') %>%
+  mutate(date=data_lag$date)
+
+# ggplot residuals
+ggplot(residual_df, aes(x = date, y = residual)) +
+  geom_line() +
+  theme_minimal() +
+  labs(title = 'Residuals of the linear model', x = 'Time', y = 'Residuals')
+```
+
+### (a). Hypothesis testing variance-shift
+
+ACF
+
+> 1. Slow decay of the ACF indicates non-stationarity
+> 2. This would imply that the autocovariance of the residuals is not constant over time
+
+```{r}
+acf(residual_df %>%
+      select(residual), lag.max = 20, main = "Residuals ACF")
+```
+
+Goldfeld-Quandt test
+
+$$
+\text{GQ} = \frac{s_1}{s_2} \approx \frac{\hat{u}^{\intercal}_1\hat{u}_2}{\hat{u}^{\intercal}_1\hat{u}_2}
+$$
+$$
+H_0: \text{Variance does not increase from segment 1 to 2}
+$$
+
+> 1. The Goldfeld-Quandt test is used to test for heteroscedasticity
+> 2. The test is based on the assumption that the variance of the residuals is constant over time
+> 3. The test requires a definition of blocks
+> 4. The test assumes the existence of two blocks
+
+```{r}
+gqtest(model, fraction = 0.1)
+```
+```{r}
+gqtest(model, fraction = 0.05)
+```
+
+Whites test (??)
+
+### (b). Hypothesis testing mean-shift
+
+Rolling mean of residuals
+
+> 1. The rolling mean of the residuals should be constant over time
+
+```{r}
+residual_df <- residual_df %>%
+  mutate(rolling_mean = rollmean(residual, k=24, fill=NA)) %>%
+  drop_na()
+ggplot(residual_df, aes(x = date, y = residual)) +
+  geom_line() +
+  geom_line(aes(x = date, y = rolling_mean), color = 'red') +
+  theme_minimal() +
+  labs(title = 'Rolling mean of residuals', x = 'Time', y = 'Residuals')
+```
+
+Time-varying coefficients
+
+> 1. The time-varying coefficients of the linear model should be constant over time
+
+```{r}
+# rolling regression
+rolling_lm <- roll_lm(x = data_lag %>% select(EURCHF) %>% as.matrix(),
+                      y = data_lag %>% select(-EURCHF, -date) %>% as.matrix(),
+                      width = as.integer(12 * 5),
+                      intercept = FALSE,
+                      online = TRUE)
+rolling_coefs_df <- rolling_lm$coefficients %>%
+  as.data.table() %>%
+  mutate(date=data_lag$date) %>%
+  select(date, everything()) %>%
+  drop_na()
+
+# scale the coefficients
+scale_rolling_coefs_df <- rolling_coefs_df %>%
+  mutate_at(vars(-date), ~(. - mean(.)) / sd(.))
+melt_scale_rolling_coefs <- melt(scale_rolling_coefs_df, id.vars = 'date')
+
+ggplot(melt_scale_rolling_coefs, aes(x = date, y = value, color = variable)) +
+  geom_line() +
+  theme_minimal() +
+  labs(title = 'Time-varying coefficients', x = 'Time', y = 'Coefficients')
+```
+
+
+## 2) seqICP
+
+```{r}
+colnames(X)
+```
+
+
+```{r}
+X_selected <- X %>% select(date, `% foreign currency investment`, `chg EUR GDP`, `CPI YoY`)
+melt_X_selected <- melt(X_selected, "date")
+ggplot(melt_X_selected, aes(x = date, y = value, color = variable)) +
+  geom_line() +
+  theme_minimal() +
+  labs(title = 'CHF features', x = 'Time', y = 'Feature')
+```
+
+
+```{r, warning=FALSE}
+model_decoupled <- seqICP(X = X_selected %>% select(-date) %>% as.matrix(),
+                          Y = y %>% select(-date) %>% as.matrix(),
+                          par.model	= list(pknown = TRUE, p = 2),
+                          model = "ar",
+                          max.parents = 5,
+                          stopIfEmpty=FALSE,
+                          silent=FALSE,
+                          test = "variance")
+summary(model_decoupled)
+```
