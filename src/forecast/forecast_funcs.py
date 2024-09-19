@@ -427,12 +427,14 @@ def run_forecast(data: pd.DataFrame,
 
             X_train_r = numpy2ri.numpy2rpy(X_train)
             y_train_r = numpy2ri.numpy2rpy(y_train)
+            selected_p_r = numpy2ri.ri2numpy(selected_p)
+            pval_threshold_r = numpy2ri.ri2numpy(pval_threshold)
 
             # pass inputs to global variables
             robjects.globalenv['Xmatrix'] = X_train_r
             robjects.globalenv['Y'] = y_train_r
-            robjects.globalenv["selected_p"] = selected_p
-            robjects.globalenv["pval_threshold"] = pval_threshold
+            robjects.globalenv["selected_p"] = selected_p_r
+            robjects.globalenv["pval_threshold"] = pval_threshold_r
 
             data_train.shape
 
