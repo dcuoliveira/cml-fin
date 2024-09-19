@@ -12,17 +12,28 @@ require("gridExtra")
 library("seqICP")
 library("lmtest")
 library("roll")
+library("vars")
 ```
 
 ```{r}
-X <- read_csv(here('src', 'new_studies', 'processedData', 'chf_features.csv')) %>%
-  rename(date=`...1`) %>% as.data.table() %>% mutate(date=ym(date)) %>% drop_na() %>%
-  filter((date >= ymd('1999-07-01')) & (date <= ymd('2017-01-01')))
-y <- read.csv(here('src', 'new_studies', 'processedData', 'chf_target.csv')) %>%
-  rename(date=Date, EURCHF=M0_EUR1) %>% as.data.table() %>% mutate(date=ym(date)) %>% drop_na() %>%
-  filter((date >= ymd('1999-07-01')) & (date <= ymd('2017-01-01')))
+target <- "ldEXME"
 
-data <- merge(X, y, by='date')
+data <- read_csv(here('src', 'new_studies', 'processedData', 'monetary-policy-processed.csv'))  
+data$...1 <- NULL
+
+X <- data %>%
+  as.data.table() %>%
+  mutate(date=ymd(date)) %>%
+  drop_na() %>%
+  filter((date >= ymd('1999-07-01')) & (date <= ymd('2017-01-01'))) %>%
+  select(-sym(target))
+y <- data %>%
+  as.data.table() %>%
+  mutate(date=ymd(date)) %>%
+  drop_na() %>%
+  filter((date >= ymd('1999-07-01')) & (date <= ymd('2017-01-01'))) %>%
+  select(date, sym(target))
+
 data_lag <- data %>%
   select(-date) %>%
   as.data.table() %>%
@@ -48,7 +59,7 @@ tail(data_lag)
 
 
 ```{r}
-ggplot(y, aes(x = date, y = EURCHF)) +
+ggplot(y %>% melt(., id.vars = 'date'), aes(x = date, y = value, color = variable)) +
   geom_line() +
   theme_minimal() +
   labs(title = 'CHF target variable', x = 'Time', y = 'Target')
@@ -65,6 +76,7 @@ ggplot(melt_X, aes(x = date, y = value, color = variable)) +
 ```{r}
 colnames(X)
 ```
+
 ## 1. Testing Stationarity
 
 On the application of Pfister et al. (2018) the authors seek to find instantaneous monthly causal predictors of the returns of EURCHF exchange rate.
@@ -77,8 +89,8 @@ The argument of the authors is based on testing invariance induced by:
 > 2. Changes in the coefficients of the DGP`
 
 ```{r}
-formula_X <- paste0("`", paste(names(data_lag)[-grep("EURCHF|date", names(data))], collapse="` + `"), "`")
-fomula <- paste(paste("EURCHF", "~", formula_X), " -1")
+formula_X <- paste0("`", paste(names(data_lag)[-grep(paste0(target, "|date"), names(data))], collapse="` + `"), "`")
+fomula <- paste(paste(target, "~", formula_X), " -1")
 model <- lm(fomula, data=data_lag %>% select(-date))
 residual_df <- residuals(model) %>%
   as.data.table() %>%
@@ -150,8 +162,8 @@ Time-varying coefficients
 
 ```{r}
 # rolling regression
-rolling_lm <- roll_lm(x = data_lag %>% select(EURCHF) %>% as.matrix(),
-                      y = data_lag %>% select(-EURCHF, -date) %>% as.matrix(),
+rolling_lm <- roll_lm(x = data_lag %>% select(sym(target)) %>% as.matrix(),
+                      y = data_lag %>% select(-sym(target), -date) %>% as.matrix(),
                       width = as.integer(12 * 5),
                       intercept = FALSE,
                       online = TRUE)
@@ -172,32 +184,50 @@ ggplot(melt_scale_rolling_coefs, aes(x = date, y = value, color = variable)) +
   labs(title = 'Time-varying coefficients', x = 'Time', y = 'Coefficients')
 ```
 
-
 ## 2) seqICP
 
 ```{r}
-colnames(X)
-```
+# select optimal lag
+lag_selection <- VARselect(data %>% select(-date), lag.max = 6, type = "const")
+p <- as.numeric(lag_selection$selection[1] )
 
-
-```{r}
-X_selected <- X %>% select(date, `% foreign currency investment`, `chg EUR GDP`, `CPI YoY`)
-melt_X_selected <- melt(X_selected, "date")
-ggplot(melt_X_selected, aes(x = date, y = value, color = variable)) +
-  geom_line() +
-  theme_minimal() +
-  labs(title = 'CHF features', x = 'Time', y = 'Feature')
+# pvalue for the hypothesis testing
+pvalue <- 0.05
 ```
 
 
 ```{r, warning=FALSE}
-model_decoupled <- seqICP(X = X_selected %>% select(-date) %>% as.matrix(),
-                          Y = y %>% select(-date) %>% as.matrix(),
-                          par.model	= list(pknown = TRUE, p = 2),
-                          model = "ar",
-                          max.parents = 5,
-                          stopIfEmpty=FALSE,
-                          silent=FALSE,
-                          test = "variance")
-summary(model_decoupled)
+res_variance <- seqICP(X %>% select(-date) %>% as.matrix(),
+                       y %>% select(sym(target)) %>% as.matrix(),
+                       test="variance",
+                       par.test=list(alpha=pvalue, # significance level of the hypothesis test
+                                     B=1000, # num of MC samples used to approximate the null dist
+                                     link=sum, # how to compare pairwise test stats
+                                     grid=c(0,70,140,nrow(X)), # grid points to build envs
+                                     complements=TRUE # if TRUE, envs should be compared against complements
+                                     ),
+                       model="ar",
+                       par.model=list(pknown=TRUE,p=p),
+                       stopIfEmpty=FALSE,
+                       silent=TRUE)
+summary(res_variance)
 ```
+
+```{r, warning=FALSE}
+res_variance <- seqICP(X %>% select(-date) %>% as.matrix(),
+                       y %>% select(sym(target)) %>% as.matrix(),
+                       test="variance",
+                       par.test=list(alpha=pvalue, # significance level of the hypothesis test
+                                     B=1000, # num of MC samples used to approximate the null dist
+                                     link=sum, # how to compare pairwise test stats
+                                     grid=c(0,70,140,nrow(X)), # grid points to build envs
+                                     complements=TRUE # if TRUE, envs should be compared against complements
+                                     ),
+                       model="ar",
+                       par.model=list(pknown=TRUE,p=1),
+                       stopIfEmpty=FALSE,
+                       silent=TRUE)
+summary(res_variance)
+```
+
+
