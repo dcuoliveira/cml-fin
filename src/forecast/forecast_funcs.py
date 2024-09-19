@@ -199,13 +199,26 @@ def run_forecast(data: pd.DataFrame,
             selected_columns = list(train_df.drop([target], axis=1).columns)
 
         train_df = train_df[[target] + selected_columns]
-        test_df = test_df[[target] + selected_columns].iloc[(estimation_window + step - p):(estimation_window + step + 1), :]
 
-        # zscore of data
+        # zscore of train data
         mean = train_df.mean()
         std = train_df.std()
 
         train_df = (train_df - mean) / std
+
+        # select optimal lag
+        if p == -1:
+            var_select_model = VAR(train_df)
+            selected_p = var_select_model.select_order(maxlags=6)
+            selected_p = selected_p.selected_orders["aic"]
+            if selected_p == 0:
+                selected_p = 1
+        else:
+            selected_p = p
+
+        test_df = test_df[[target] + selected_columns].iloc[(estimation_window + step - selected_p):(estimation_window + step + 1), :]
+
+        # zscore of test data
         test_df = (test_df - mean) / std
 
         # subset data into train and test
@@ -220,13 +233,13 @@ def run_forecast(data: pd.DataFrame,
             data_test = pd.concat([yt_test, Xt_test], axis=1)
 
             # run VAR-LiNGAM
-            var_lingam = lingam.VARLiNGAM(lags=p)
+            var_lingam = lingam.VARLiNGAM(lags=selected_p, criterion="none")
             var_lingam_fit = var_lingam.fit(data_train)
 
             # build labels
             labels = {}
             selected_variables = []
-            for i in range(p+1):
+            for i in range(selected_p):
 
                 var_names = []
                 for colname in data_train.columns:
@@ -236,7 +249,7 @@ def run_forecast(data: pd.DataFrame,
                             var_names.append(f"{colname}(t-{i})")
                 labels[f'labels{i}'] = var_names
 
-                B = var_lingam_fit.adjacency_matrices_[i]
+                B = var_lingam_fit._adjacency_matrices[i]
                 B_df = pd.DataFrame(B, columns=labels[f'labels{i}'] , index=labels['labels0'] )
                 tmp_selected_variables = list(B_df.loc["{target}(t)".format(target=target)][np.abs(B_df.loc["{target}(t)".format(target=target)]) > beta_threshold].index)
 
@@ -247,7 +260,7 @@ def run_forecast(data: pd.DataFrame,
 
             # save dags
             dict_ = {Xt_train.index[-1].strftime("%Y%m%d"): {
-                "dag": var_lingam_fit.adjacency_matrices_, 
+                "dag": var_lingam_fit._adjacency_matrices, 
                 "threshold": beta_threshold,
                 "labels": labels,
                 }
@@ -255,8 +268,8 @@ def run_forecast(data: pd.DataFrame,
             dags.update(dict_)
 
             # create lags of Xt variables
-            data_train = add_and_keep_lags_only(data=data_train, lags=p)
-            data_test = add_and_keep_lags_only(data=data_test, lags=p)
+            data_train = add_and_keep_lags_only(data=data_train, lags=selected_p)
+            data_test = add_and_keep_lags_only(data=data_test, lags=selected_p)
                 
             Xt_train = data_train.dropna()
             Xt_test = data_test.dropna()
@@ -265,8 +278,8 @@ def run_forecast(data: pd.DataFrame,
             Xt_test = pd.concat([yt_test, Xt_test], axis=1)
 
             # create lags of Xt variables
-            data_train = add_and_keep_lags_only(data=data_train, lags=p)
-            data_test = add_and_keep_lags_only(data=data_test, lags=p)
+            data_train = add_and_keep_lags_only(data=data_train, lags=selected_p)
+            data_test = add_and_keep_lags_only(data=data_test, lags=selected_p)
 
             Xt_train = Xt_train.dropna()
             yt_train = yt_train.loc[Xt_train.index]
@@ -315,7 +328,7 @@ def run_forecast(data: pd.DataFrame,
             selected_variables = []
             # run grander causality test for each feature
             for colname in data_train.columns:
-                test_result = grangercausalitytests(x=data_train[[target, colname]], maxlag=p, verbose=False, addconst=incercept)
+                test_result = grangercausalitytests(x=data_train[[target, colname]], maxlag=selected_p, verbose=False, addconst=incercept)
 
                 # select variables with p-value < 0.05
                 for lag in test_result.keys():
@@ -324,8 +337,8 @@ def run_forecast(data: pd.DataFrame,
                         selected_variables += [f"{colname}(t-{lag})"]
 
             # create lags of Xt variables
-            data_train = add_and_keep_lags_only(data=data_train, lags=p)
-            data_test = add_and_keep_lags_only(data=data_test, lags=p)
+            data_train = add_and_keep_lags_only(data=data_train, lags=selected_p)
+            data_test = add_and_keep_lags_only(data=data_test, lags=selected_p)
 
             Xt_train = data_train.dropna()
             Xt_test = data_test.dropna()
@@ -334,7 +347,7 @@ def run_forecast(data: pd.DataFrame,
             data_test = pd.concat([yt_test, Xt_test], axis=1)
 
             # run grander causality test for each feature
-            var_fit = VAR(data_train).fit(maxlags=p)
+            var_fit = VAR(data_train).fit(maxlags=selected_p)
 
             # run grander causality test for each feature
             selected_variables = []
@@ -342,12 +355,12 @@ def run_forecast(data: pd.DataFrame,
                 if colname != target:
                     test_result = var_fit.test_causality(target, [colname], kind='f', signif=pval_threshold)
                     if test_result.pvalue <= pval_threshold:
-                        for lag in range(1, p + 1):
+                        for lag in range(1, selected_p + 1):
                             selected_variables += [f"{colname}(t-{lag})"]               
 
             # create lags of Xt variables
-            data_train = add_and_keep_lags_only(data=data_train, lags=p)
-            data_test = add_and_keep_lags_only(data=data_test, lags=p)
+            data_train = add_and_keep_lags_only(data=data_train, lags=selected_p)
+            data_test = add_and_keep_lags_only(data=data_test, lags=selected_p)
 
             Xt_train = data_train.dropna()
             Xt_test = data_test.dropna()
@@ -359,7 +372,7 @@ def run_forecast(data: pd.DataFrame,
             target_data = data_train.reset_index(drop=True)
 
             # run DYNOTEARS
-            dynotears = from_pandas_dynamic(target_data, p=p)
+            dynotears = from_pandas_dynamic(target_data, p=selected_p)
 
             edges_df = pd.DataFrame(dynotears.edges(), columns=['to', 'from'])[['from', 'to']]
             edges_df["from_lag"] = edges_df["from"].apply(lambda x: int(x.split("_")[1][-1]))
@@ -399,8 +412,8 @@ def run_forecast(data: pd.DataFrame,
             # dags.update(dict_)
 
             # create lags of Xt variables
-            data_train = add_and_keep_lags_only(data=data_train, lags=p)
-            data_test = add_and_keep_lags_only(data=data_test, lags=p)
+            data_train = add_and_keep_lags_only(data=data_train, lags=selected_p)
+            data_test = add_and_keep_lags_only(data=data_test, lags=selected_p)
 
             Xt_train = data_train.dropna()
             Xt_test = data_test.dropna()
@@ -418,6 +431,8 @@ def run_forecast(data: pd.DataFrame,
             # pass inputs to global variables
             robjects.globalenv['Xmatrix'] = X_train_r
             robjects.globalenv['Y'] = y_train_r
+            robjects.globalenv["selected_p"] = selected_p
+            robjects.globalenv["pval_threshold"] = pval_threshold
 
             data_train.shape
 
@@ -426,9 +441,17 @@ def run_forecast(data: pd.DataFrame,
 
                 seqICP_result <- seqICP(X = Xmatrix,
                                         Y = Y,
-                                        max.parents = 5,
-                                        stopIfEmpty = FALSE,
-                                        silent = TRUE)
+                                        test="variance",
+                                        par.test=list(alpha=pval_threshold, # significance level of the hypothesis test
+                                                        B=1000, # num of MC samples used to approximate the null dist
+                                                        link=sum, # how to compare pairwise test stats
+                                                        grid=c(0,70,140,nrow(X)), # grid points to build envs
+                                                        complements=TRUE # if TRUE, envs should be compared against complements
+                                                        ),
+                                        model="ar",
+                                        par.model=list(pknown=TRUE,p=selected_p),
+                                        stopIfEmpty=FALSE,
+                                        silent=TRUE)
                 seqICP_summary <- summary(seqICP_result)
                 parent_set <- seqICP_result$parent.set
 
@@ -443,8 +466,8 @@ def run_forecast(data: pd.DataFrame,
                 selected_variables = []
             
             # create lags of Xt variables
-            add_and_keep_lags_only(data=data_train, lags=p)
-            add_and_keep_lags_only(data=data_test, lags=p)
+            add_and_keep_lags_only(data=data_train, lags=selected_p)
+            add_and_keep_lags_only(data=data_test, lags=selected_p)
             
             Xt_train = data_train.dropna()
             Xt_test = data_test.dropna()
@@ -460,8 +483,8 @@ def run_forecast(data: pd.DataFrame,
             Xt_test = pd.concat([yt_test, Xt_test], axis=1)
 
             # create lags of Xt variables
-            Xt_train = add_and_keep_lags_only(data=Xt_train, lags=p)
-            Xt_test = add_and_keep_lags_only(data=Xt_test, lags=p)
+            Xt_train = add_and_keep_lags_only(data=Xt_train, lags=pval_threshold)
+            Xt_test = add_and_keep_lags_only(data=Xt_test, lags=pval_threshold)
 
             Xt_train = Xt_train.dropna()
             yt_train = yt_train.loc[Xt_train.index]
@@ -496,12 +519,12 @@ def run_forecast(data: pd.DataFrame,
             rfe_tscv = RFECV(model_wrapper.ModelClass, cv=tscv, scoring="neg_mean_squared_error")
 
             # create lags of Xt variables
-            Xt_train = add_and_keep_lags_only(data=Xt_train, lags=p)
-            Xt_test = add_and_keep_lags_only(data=Xt_test, lags=p)
+            Xt_train = add_and_keep_lags_only(data=Xt_train, lags=pval_threshold)
+            Xt_test = add_and_keep_lags_only(data=Xt_test, lags=pval_threshold)
 
             # create lags of Xt variables
-            add_and_keep_lags_only(data=Xt_train, lags=p)
-            add_and_keep_lags_only(data=Xt_test, lags=p)
+            add_and_keep_lags_only(data=Xt_train, lags=pval_threshold)
+            add_and_keep_lags_only(data=Xt_test, lags=pval_threshold)
 
             Xt_train = Xt_train.dropna()
             yt_train = yt_train.loc[Xt_train.index]
@@ -518,8 +541,8 @@ def run_forecast(data: pd.DataFrame,
             Xt_test = pd.concat([yt_test, Xt_test], axis=1)
 
             # create lags of Xt variables
-            add_and_keep_lags_only(data=Xt_train, lags=p)
-            add_and_keep_lags_only(data=Xt_test, lags=p)
+            add_and_keep_lags_only(data=Xt_train, lags=pval_threshold)
+            add_and_keep_lags_only(data=Xt_test, lags=pval_threshold)
 
             Xt_train = Xt_train.dropna()
             yt_train = yt_train.loc[Xt_train.index]
@@ -535,7 +558,7 @@ def run_forecast(data: pd.DataFrame,
             data_train_tigramite = pp.DataFrame(data_train.values, var_names=data_train.columns)
 
             pcmci = PCMCI(dataframe=data_train_tigramite, cond_ind_test=cmiknn.CMIknn(), verbosity=0)
-            pcmci.run_pcmci(tau_min=0, tau_max=p, pc_alpha=pval_threshold)
+            pcmci.run_pcmci(tau_min=0, tau_max=selected_p, pc_alpha=pval_threshold)
 
             parents_set = dict()
             for effect in pcmci.all_parents.keys():
@@ -552,8 +575,8 @@ def run_forecast(data: pd.DataFrame,
                     selected_variables.append(f"{cause}(t-{t})")
 
             # create lags of Xt variables
-            data_train = add_and_keep_lags_only(data=data_train, lags=p)
-            data_test = add_and_keep_lags_only(data=data_test, lags=p)
+            data_train = add_and_keep_lags_only(data=data_train, lags=pval_threshold)
+            data_test = add_and_keep_lags_only(data=data_test, lags=pval_threshold)
                 
             Xt_train = data_train.dropna()
             Xt_test = data_test.dropna()
