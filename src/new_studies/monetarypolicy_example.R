@@ -103,7 +103,7 @@ write.csv(MPdata3, here("src", "new_studies", "processedData", "monetary-policy-
 # Apply icps using different lags (using smooth.variance)
 ##
 
-lags <- 1:6
+lags <- 1:10
 res <- vector("list",length(lags))
 pvals <- matrix(NA,length(lags),ncol(MPdata2)-1)
 
@@ -124,11 +124,22 @@ matplot(pvals)
 # Apply icps using different lags (using two grid points and variance)
 ##
 
-lags2 <- 1:6
+lags2 <- 4
 pvals2 <- matrix(NA,length(lags2),ncol(MPdata2)-1)
 
 mcfun <- function(lags){
-  res <- seqICP(X,Y,test="variance",par.test=list(alpha=0.05,B=1000,link=sum, grid=c(0,70,140,nrow(MPdata2)),complements=TRUE),model="ar",par.model=list(pknown=TRUE,p=lags),stopIfEmpty=FALSE,silent=TRUE)
+  res <- seqICP(X,
+                Y,
+                test="variance",
+                par.test=list(alpha=0.05,
+                              B=1000,
+                              link=sum,
+                              grid=c(0,70,140,nrow(MPdata2)),
+                              complements=TRUE),
+                model="ar",
+                par.model=list(pknown=TRUE,p=lags),
+                stopIfEmpty=FALSE,
+                silent=TRUE)
   print("one step")
   return(res)
 }
