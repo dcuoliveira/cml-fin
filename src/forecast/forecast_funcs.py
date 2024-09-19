@@ -483,8 +483,8 @@ def run_forecast(data: pd.DataFrame,
             Xt_test = pd.concat([yt_test, Xt_test], axis=1)
 
             # create lags of Xt variables
-            Xt_train = add_and_keep_lags_only(data=Xt_train, lags=pval_threshold)
-            Xt_test = add_and_keep_lags_only(data=Xt_test, lags=pval_threshold)
+            Xt_train = add_and_keep_lags_only(data=Xt_train, lags=selected_p)
+            Xt_test = add_and_keep_lags_only(data=Xt_test, lags=selected_p)
 
             Xt_train = Xt_train.dropna()
             yt_train = yt_train.loc[Xt_train.index]
@@ -519,12 +519,12 @@ def run_forecast(data: pd.DataFrame,
             rfe_tscv = RFECV(model_wrapper.ModelClass, cv=tscv, scoring="neg_mean_squared_error")
 
             # create lags of Xt variables
-            Xt_train = add_and_keep_lags_only(data=Xt_train, lags=pval_threshold)
-            Xt_test = add_and_keep_lags_only(data=Xt_test, lags=pval_threshold)
+            Xt_train = add_and_keep_lags_only(data=Xt_train, lags=selected_p)
+            Xt_test = add_and_keep_lags_only(data=Xt_test, lags=selected_p)
 
             # create lags of Xt variables
-            add_and_keep_lags_only(data=Xt_train, lags=pval_threshold)
-            add_and_keep_lags_only(data=Xt_test, lags=pval_threshold)
+            add_and_keep_lags_only(data=Xt_train, lags=selected_p)
+            add_and_keep_lags_only(data=Xt_test, lags=selected_p)
 
             Xt_train = Xt_train.dropna()
             yt_train = yt_train.loc[Xt_train.index]
@@ -541,8 +541,8 @@ def run_forecast(data: pd.DataFrame,
             Xt_test = pd.concat([yt_test, Xt_test], axis=1)
 
             # create lags of Xt variables
-            add_and_keep_lags_only(data=Xt_train, lags=pval_threshold)
-            add_and_keep_lags_only(data=Xt_test, lags=pval_threshold)
+            add_and_keep_lags_only(data=Xt_train, lags=selected_p)
+            add_and_keep_lags_only(data=Xt_test, lags=selected_p)
 
             Xt_train = Xt_train.dropna()
             yt_train = yt_train.loc[Xt_train.index]
@@ -575,8 +575,8 @@ def run_forecast(data: pd.DataFrame,
                     selected_variables.append(f"{cause}(t-{t})")
 
             # create lags of Xt variables
-            data_train = add_and_keep_lags_only(data=data_train, lags=pval_threshold)
-            data_test = add_and_keep_lags_only(data=data_test, lags=pval_threshold)
+            data_train = add_and_keep_lags_only(data=data_train, lags=selected_p)
+            data_test = add_and_keep_lags_only(data=data_test, lags=selected_p)
                 
             Xt_train = data_train.dropna()
             Xt_test = data_test.dropna()
