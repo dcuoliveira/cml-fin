@@ -447,7 +447,7 @@ def run_forecast(data: pd.DataFrame,
                                         par.test=list(alpha=pval_threshold, # significance level of the hypothesis test
                                                         B=1000, # num of MC samples used to approximate the null dist
                                                         link=sum, # how to compare pairwise test stats
-                                                        grid=c(0,70,140,nrow(X)), # grid points to build envs
+                                                        grid=c(0,70,140,nrow(Xmatrix)), # grid points to build envs
                                                         complements=TRUE # if TRUE, envs should be compared against complements
                                                         ),
                                         model="ar",
