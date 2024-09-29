@@ -26,22 +26,22 @@ X <- data %>%
   mutate(date=ymd(date)) %>%
   drop_na() %>%
   filter((date >= ymd('1999-07-01')) & (date <= ymd('2017-01-01'))) %>%
-  select(-sym(target))
+  dplyr::select(-sym(target))
 y <- data %>%
   as.data.table() %>%
   mutate(date=ymd(date)) %>%
   drop_na() %>%
   filter((date >= ymd('1999-07-01')) & (date <= ymd('2017-01-01'))) %>%
-  select(date, sym(target))
+  dplyr::select(date, sym(target))
 
 data_lag <- data %>%
-  select(-date) %>%
+  dplyr::select(-date) %>%
   as.data.table() %>%
   shift(1) %>%
   as.data.table() %>%
   setnames(paste0(names(data)[-grep("date", names(data))], "_lag1")) %>%
   mutate(date=data$date) %>%
-  select(date, everything())
+  dplyr::select(date, everything())
 data_lag <- merge(data, data_lag, by='date') %>% drop_na()
 ```
 
@@ -91,7 +91,7 @@ The argument of the authors is based on testing invariance induced by:
 ```{r}
 formula_X <- paste0("`", paste(names(data_lag)[-grep(paste0(target, "|date"), names(data))], collapse="` + `"), "`")
 fomula <- paste(paste(target, "~", formula_X), " -1")
-model <- lm(fomula, data=data_lag %>% select(-date))
+model <- lm(fomula, data=data_lag %>% dplyr::select(-date))
 residual_df <- residuals(model) %>%
   as.data.table() %>%
   setnames('residual') %>%
@@ -113,7 +113,7 @@ ACF
 
 ```{r}
 acf(residual_df %>%
-      select(residual), lag.max = 20, main = "Residuals ACF")
+      dplyr::select(residual), lag.max = 20, main = "Residuals ACF")
 ```
 
 Goldfeld-Quandt test
@@ -162,15 +162,15 @@ Time-varying coefficients
 
 ```{r}
 # rolling regression
-rolling_lm <- roll_lm(x = data_lag %>% select(sym(target)) %>% as.matrix(),
-                      y = data_lag %>% select(-sym(target), -date) %>% as.matrix(),
+rolling_lm <- roll_lm(x = data_lag %>% dplyr::select(sym(target)) %>% as.matrix(),
+                      y = data_lag %>% dplyr::select(-sym(target), -date) %>% as.matrix(),
                       width = as.integer(12 * 5),
                       intercept = FALSE,
                       online = TRUE)
 rolling_coefs_df <- rolling_lm$coefficients %>%
   as.data.table() %>%
   mutate(date=data_lag$date) %>%
-  select(date, everything()) %>%
+  dplyr::select(date, everything()) %>%
   drop_na()
 
 # scale the coefficients
@@ -188,7 +188,7 @@ ggplot(melt_scale_rolling_coefs, aes(x = date, y = value, color = variable)) +
 
 ```{r}
 # select optimal lag
-lag_selection <- VARselect(data %>% select(-date), lag.max = 6, type = "const")
+lag_selection <- VARselect(data %>% dplyr::select(-date), lag.max = 6, type = "const")
 p <- as.numeric(lag_selection$selection[1] )
 
 # pvalue for the hypothesis testing
@@ -197,8 +197,8 @@ pvalue <- 0.05
 
 
 ```{r, warning=FALSE}
-res_variance <- seqICP(X %>% select(-date) %>% as.matrix(),
-                       y %>% select(sym(target)) %>% as.matrix(),
+res_variance <- seqICP(X %>% dplyr::select(-date) %>% as.matrix(),
+                       y %>% dplyr::select(sym(target)) %>% as.matrix(),
                        test="variance",
                        par.test=list(alpha=pvalue, # significance level of the hypothesis test
                                      B=1000, # num of MC samples used to approximate the null dist
@@ -214,8 +214,8 @@ summary(res_variance)
 ```
 
 ```{r, warning=FALSE}
-res_variance <- seqICP(X %>% select(-date) %>% as.matrix(),
-                       y %>% select(sym(target)) %>% as.matrix(),
+res_variance <- seqICP(X %>% dplyr::select(-date) %>% as.matrix(),
+                       y %>% dplyr::select(sym(target)) %>% as.matrix(),
                        test="variance",
                        par.test=list(alpha=pvalue, # significance level of the hypothesis test
                                      B=1000, # num of MC samples used to approximate the null dist
