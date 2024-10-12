@@ -436,29 +436,6 @@ def run_forecast(data: pd.DataFrame,
             robjects.globalenv["selected_p"] = selected_p_r
             robjects.globalenv["pval_threshold"] = pval_threshold_r
 
-            data_train.shape
-
-            # robjects.r(f'''
-            #     library(seqICP)
-
-            #     seqICP_result <- seqICP(X = Xmatrix,
-            #                             Y = Y,
-            #                             test="variance",
-            #                             par.test=list(alpha=pval_threshold, # significance level of the hypothesis test
-            #                                             B=1000, # num of MC samples used to approximate the null dist
-            #                                             link=sum, # how to compare pairwise test stats
-            #                                             grid=c(0,70,140,nrow(Xmatrix)), # grid points to build envs
-            #                                             complements=TRUE # if TRUE, envs should be compared against complements
-            #                                             ),
-            #                             model="ar",
-            #                             par.model=list(pknown=TRUE,p=selected_p),
-            #                             stopIfEmpty=FALSE,
-            #                             silent=TRUE)
-            #     seqICP_summary <- summary(seqICP_result)
-            #     parent_set <- seqICP_result$parent.set
-
-            # ''')
-
             robjects.r(f'''
                 library(seqICP)
 
