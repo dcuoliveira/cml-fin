@@ -108,7 +108,14 @@ res <- vector("list",length(lags))
 pvals <- matrix(NA,length(lags),ncol(MPdata2)-1)
 
 mcfun <- function(lags){
-  res <- seqICP(X,Y,test="smooth.variance",par.test=list(alpha=0.05,B=1000),model="ar",par.model=list(pknown=TRUE,p=lags),stopIfEmpty=FALSE,silent=TRUE)
+  res <- seqICP(X,
+                Y,
+                test="smooth.variance",
+                par.test=list(alpha=0.05,B=1000),
+                model="ar",
+                par.model=list(pknown=TRUE,p=lags),
+                stopIfEmpty=FALSE,
+                silent=TRUE)
   print("one step")
   return(res)
 }
