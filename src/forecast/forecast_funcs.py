@@ -453,10 +453,20 @@ def run_forecast(data: pd.DataFrame,
             ''')
 
             # retrieve results from seqICP
-            parent_set = robjects.r['parent_set']
+            p_values = robjects.r['p_values']
+            
+            selected_variables_df = pd.DataFrame({
+                "variables": selected_data.drop(target, axis=1).columns,
+                "pval": robjects.r['p_values']
+            })
 
-            if len(parent_set) != 0:
-                selected_variables = list(data_train.drop(target, axis=1).columns[(parent_set - 1)])
+            selected_variables_df = selected_variables_df.loc[selected_variables_df["pval"] <= pval_threshold]
+            
+            if selected_variables_df.shape[0] > 0:
+                selected_variables = []
+                for feature in selected_variables_df["variables"]:
+                    for i in range(1, selected_p+1):
+                        selected_variables.append(f"{feature}(t-{i})")
             else:
                 selected_variables = []
             
