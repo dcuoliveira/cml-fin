@@ -449,6 +449,7 @@ def run_forecast(data: pd.DataFrame,
                                         silent=TRUE)
                 seqICP_summary <- summary(seqICP_result)
                 parent_set <- seqICP_result$parent.set
+                p_values <- seqICP_result$p.values
 
             ''')
 
