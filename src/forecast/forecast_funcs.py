@@ -457,8 +457,8 @@ def run_forecast(data: pd.DataFrame,
             p_values = robjects.r['p_values']
             
             selected_variables_df = pd.DataFrame({
-                "variables": selected_data.drop(target, axis=1).columns,
-                "pval": robjects.r['p_values']
+                "variables": data_train.drop(target, axis=1).columns,
+                "pval": p_values
             })
 
             selected_variables_df = selected_variables_df.loc[selected_variables_df["pval"] <= pval_threshold]
