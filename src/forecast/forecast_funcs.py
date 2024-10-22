@@ -256,7 +256,7 @@ def run_forecast(data: pd.DataFrame,
                 selected_variables += [name.split("(")[0] for name in tmp_selected_variables]
 
             selected_variables = list(set(selected_variables))
-            selected_variables = [f"{var}(t-{i})" for var in selected_variables for i in range(1, p+1)]
+            selected_variables = [f"{var}(t-{i})" for var in selected_variables for i in range(1, selected_p+1)]
 
             # save dags
             dict_ = {Xt_train.index[-1].strftime("%Y%m%d"): {
