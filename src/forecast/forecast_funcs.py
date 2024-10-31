@@ -528,10 +528,6 @@ def run_forecast(data: pd.DataFrame,
             Xt_train = add_and_keep_lags_only(data=Xt_train, lags=selected_p)
             Xt_test = add_and_keep_lags_only(data=Xt_test, lags=selected_p)
 
-            # create lags of Xt variables
-            add_and_keep_lags_only(data=Xt_train, lags=selected_p)
-            add_and_keep_lags_only(data=Xt_test, lags=selected_p)
-
             Xt_train = Xt_train.dropna()
             yt_train = yt_train.loc[Xt_train.index]
 
@@ -539,21 +535,36 @@ def run_forecast(data: pd.DataFrame,
 
             selected_indices = rfe_tscv.get_support(indices=True)
             selected_variables = Xt_train.columns[selected_indices]
-        elif fs_method == "sfscv-lin":
-            model_wrapper = LinearRegressionWrapper(model_params={'fit_intercept': False})
-            sfs = SequentialFeatureSelector(model_wrapper.ModelClass, cv=5, scoring="neg_mean_squared_error")
+        elif fs_method.startswith("sfscv"):
+            if 'forward' in fs_method:
+                direction = 'forward'
+            elif 'backward' in fs_method:
+                direction = 'backward'
+            else:
+                raise Exception(f'Feature Selection Direction not recognized: {fs_method}')
+
+            if 'lin' in fs_method:
+                model_wrapper = LinearRegressionWrapper(model_params={'fit_intercept': True})
+            elif 'rf'in fs_method:
+                model_wrapper = RandomForestWrapper()
+            elif 'svm' in fs_method:
+                model_wrapper = SVMWrapper()
+            else:
+                raise Exception(f'Feature Selection Model not recognized: {fs_method}')
+
+            sfs = SequentialFeatureSelector(model_wrapper.ModelClass, cv=5, scoring="neg_mean_squared_error", direction=direction)
 
             Xt_train = pd.concat([yt_train, Xt_train], axis=1)
             Xt_test = pd.concat([yt_test, Xt_test], axis=1)
 
             # create lags of Xt variables
-            add_and_keep_lags_only(data=Xt_train, lags=selected_p)
-            add_and_keep_lags_only(data=Xt_test, lags=selected_p)
+            Xt_train = add_and_keep_lags_only(data=Xt_train, lags=selected_p)
+            Xt_test = add_and_keep_lags_only(data=Xt_test, lags=selected_p)
 
             Xt_train = Xt_train.dropna()
             yt_train = yt_train.loc[Xt_train.index]
 
-            fit_fs = sfs.fit(Xt_train, yt_train)
+            sfs.fit(Xt_train, yt_train.values.ravel())
 
             selected_indices = sfs.get_support(indices=True)
             selected_variables = Xt_train.columns[selected_indices]
