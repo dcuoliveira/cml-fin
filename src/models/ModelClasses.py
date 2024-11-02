@@ -55,9 +55,9 @@ class RandomForestWrapper():
         #                    'model__max_depth': sp_randint(2, 20)}
 
         self.param_grid = {
-            'model__max_depth': sp_randint(1, 7),
+            'model__max_depth': sp_randint(1, 10),
             'model__n_estimators': [300],
-            'model__max_features': [3, 5, 10, 20, 30, 50]
+            'model__max_features': ['sqrt', 'log2']
         }
         
 
