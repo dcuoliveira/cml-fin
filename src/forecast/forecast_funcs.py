@@ -1,9 +1,8 @@
 import pandas as pd
 from tqdm import tqdm
-from sklearn.model_selection import TimeSeriesSplit, KFold
-from sklearn.model_selection import RandomizedSearchCV, GridSearchCV
+from sklearn.model_selection import RandomizedSearchCV, GridSearchCV, TimeSeriesSplit, KFold
 from sklearn.metrics import make_scorer, mean_squared_error
-from sklearn.feature_selection import SequentialFeatureSelector, RFECV
+from sklearn.feature_selection import SequentialFeatureSelector
 import statsmodels.api as sm
 import lingam
 import numpy as np
@@ -35,7 +34,7 @@ except:
     print("rpy2 package not installed. You wont be able to run seqICP model.")
 
 from models.ClusteringModels import ClusteringModels, matchClusters
-from models.ModelClasses import LassoWrapper, LinearRegressionWrapper, RandomForestWrapper
+from models.ModelClasses import LassoWrapper, LinearRegressionWrapper, RandomForestWrapper, SVMWrapper
 from utils.parsers import add_and_keep_lags_only
 
 def cv_opt(X, y, model_wrapper, cv_type, n_splits, n_iter, seed, verbose, n_jobs, scoring):
@@ -85,7 +84,10 @@ def run_forecast(data: pd.DataFrame,
                  clustering_method: str,
                  n_clusters: int = 0,
                  cluster_threshold: float = 0.8,
-                 intra_cluster_selection: str = "rank"):
+                 intra_cluster_selection: str = "rank",
+                 n_iter: int=10,
+                 n_jobs: int = -1,
+                 seed: int = 19940202):
     
     # sanity check causal representation learning method
     if (intra_cluster_selection == "pca") and ((clustering_method == "no") or (n_clusters ==0)):
@@ -477,65 +479,15 @@ def run_forecast(data: pd.DataFrame,
             
             Xt_train = data_train.dropna()
             Xt_test = data_test.dropna()
-        elif (fs_method == "sfstscv-lin") or (fs_method == "sfstscv-rf"):
-            if fs_method == "sfstscv-lin":
-                model_wrapper = LinearRegressionWrapper(model_params={'fit_intercept': False})
-            elif fs_method == "sfstscv-rf":
-                model_wrapper = RandomForestWrapper()
-            tscv = TimeSeriesSplit(n_splits=3)
-            sfs_tscv = SequentialFeatureSelector(model_wrapper.ModelClass, cv=tscv)
+        elif fs_method.startswith("sfscv") or fs_method.startswith("sfstscv"):
 
-            Xt_train = pd.concat([yt_train, Xt_train], axis=1)
-            Xt_test = pd.concat([yt_test, Xt_test], axis=1)
+            if fs_method.startswith("sfstscv"):
+                cv = TimeSeriesSplit(n_splits=5)
+            elif fs_method.startswith("sfscv"):
+                cv = KFold(n_splits=5)
+            else:
+                raise Exception(f'Cross-validation Method not Recognized {fs_method}')
 
-            # create lags of Xt variables
-            Xt_train = add_and_keep_lags_only(data=Xt_train, lags=selected_p)
-            Xt_test = add_and_keep_lags_only(data=Xt_test, lags=selected_p)
-
-            Xt_train = Xt_train.dropna()
-            yt_train = yt_train.loc[Xt_train.index]
-
-            # define the pipeline
-            pipeline = Pipeline([
-                ('feature_selection', sfs_tscv),
-                ('model', model_wrapper.ModelClass)
-            ])
-
-            # define random search
-            random_search = RandomizedSearchCV(
-                estimator=pipeline,
-                param_distributions=model_wrapper.param_grid,
-                n_iter=20,
-                cv=tscv,
-                n_jobs=-1,
-                scoring='neg_mean_squared_error'
-            )
-
-            # fit model
-            fit_fs = random_search.fit(Xt_train.values, yt_train.values.ravel())
-
-            selected_indices = random_search.best_estimator_.named_steps['feature_selection'].get_support(indices=True)
-            selected_variables = Xt_train.columns[selected_indices]
-        elif (fs_method == "rfetscv-lin") or (fs_method == "rfetscv-rf"):
-            if fs_method == "rfetscv-lin":
-                model_wrapper = LinearRegressionWrapper(model_params={'fit_intercept': False})
-            elif fs_method == "rfetscv-rf":
-                model_wrapper = RandomForestWrapper()
-            tscv = TimeSeriesSplit(n_splits=5)
-            rfe_tscv = RFECV(model_wrapper.ModelClass, cv=tscv, scoring="neg_mean_squared_error")
-
-            # create lags of Xt variables
-            Xt_train = add_and_keep_lags_only(data=Xt_train, lags=selected_p)
-            Xt_test = add_and_keep_lags_only(data=Xt_test, lags=selected_p)
-
-            Xt_train = Xt_train.dropna()
-            yt_train = yt_train.loc[Xt_train.index]
-
-            fit_fs = rfe_tscv.fit(Xt_train.values, yt_train.values.ravel())
-
-            selected_indices = rfe_tscv.get_support(indices=True)
-            selected_variables = Xt_train.columns[selected_indices]
-        elif fs_method.startswith("sfscv"):
             if 'forward' in fs_method:
                 direction = 'forward'
             elif 'backward' in fs_method:
@@ -543,16 +495,36 @@ def run_forecast(data: pd.DataFrame,
             else:
                 raise Exception(f'Feature Selection Direction not recognized: {fs_method}')
 
-            if 'lin' in fs_method:
+            if '-lin' in fs_method:
                 model_wrapper = LinearRegressionWrapper(model_params={'fit_intercept': True})
-            elif 'rf'in fs_method:
+            elif '-rf'in fs_method:
                 model_wrapper = RandomForestWrapper()
-            elif 'svm' in fs_method:
+            elif '-svm' in fs_method:
                 model_wrapper = SVMWrapper()
             else:
                 raise Exception(f'Feature Selection Model not recognized: {fs_method}')
 
-            sfs = SequentialFeatureSelector(model_wrapper.ModelClass, cv=5, scoring="neg_mean_squared_error", direction=direction)
+            sfs = SequentialFeatureSelector(
+                model_wrapper.ModelClass, 
+                direction=direction, 
+                cv=cv, 
+                scoring="neg_mean_squared_error"
+            )
+
+            pipeline = Pipeline([
+                ('feature_selector', sfs),
+                ('model', model_wrapper.ModelClass)
+            ])
+
+            search = RandomizedSearchCV(
+                estimator=pipeline,
+                param_distributions=model_wrapper.param_grid,
+                n_iter=n_iter,
+                n_jobs=n_jobs,
+                cv=cv,
+                scoring="neg_mean_squared_error",
+                random_state=seed
+            )
 
             Xt_train = pd.concat([yt_train, Xt_train], axis=1)
             Xt_test = pd.concat([yt_test, Xt_test], axis=1)
@@ -564,9 +536,9 @@ def run_forecast(data: pd.DataFrame,
             Xt_train = Xt_train.dropna()
             yt_train = yt_train.loc[Xt_train.index]
 
-            sfs.fit(Xt_train, yt_train.values.ravel())
+            search_output = search.fit(Xt_train, yt_train.values.ravel())
 
-            selected_indices = sfs.get_support(indices=True)
+            selected_indices = search.best_estimator_.named_steps['feature_selector'].get_support()
             selected_variables = Xt_train.columns[selected_indices]
         elif fs_method == "pcmci":
             data_train = pd.concat([yt_train, Xt_train], axis=1)
