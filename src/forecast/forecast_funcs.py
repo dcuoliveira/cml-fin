@@ -474,8 +474,8 @@ def run_forecast(data: pd.DataFrame,
                 selected_variables = []
             
             # create lags of Xt variables
-            add_and_keep_lags_only(data=data_train, lags=selected_p)
-            add_and_keep_lags_only(data=data_test, lags=selected_p)
+            data_train = add_and_keep_lags_only(data=data_train, lags=selected_p)
+            data_test = add_and_keep_lags_only(data=data_test, lags=selected_p)
             
             Xt_train = data_train.dropna()
             Xt_test = data_test.dropna()
