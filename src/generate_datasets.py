@@ -1,99 +1,107 @@
-from fredapi import Fred
-import pandas as pd
-from tqdm import tqdm
-import datetime
-import numpy as np
 import os
+import pandas as pd
+import numpy as np
+from FredMD import FredMD
+from metadata.etfs import etfs_large, etfs_small
+
+DATA_UTILS_PATH = os.path.join(os.path.dirname(__file__), "data", "utils")
+INPUTS_PATH = os.path.join(os.path.dirname(__file__), "data", "inputs")
+START_DATE = "1960-01-01"
+
+def gen_fred_dataset(start_date):
+    fredmd = FredMD()
+    fredmd.apply_transforms()
+
+    # load fredmd data from URL
+    raw_fredmd_df = fredmd.rawseries
+    transf_fredmd_df = fredmd.series
+
+    # # descriptions
+    # des_raw_fredmd_df = pd.DataFrame(raw_fredmd_df.iloc[0]).reset_index()
+    # des_raw_fredmd_df.columns = ["fred", "ttype"]
+    # des_raw_fredmd_df = des_raw_fredmd_df.drop([0], axis=0)
+    # des_fredmd_df = pd.read_csv(os.path.join(DATA_UTILS_PATH, "fredmd_description.csv"), delimiter=";")
+
+    # # select variables with description
+    # raw_fredmd_df = raw_fredmd_df[list(set(list(des_fredmd_df["fred"])) & set(list(raw_fredmd_df.columns)))]
+
+    # # select price data with logdiff transf
+    # des_prices = des_fredmd_df.loc[(des_fredmd_df["group"] == "Prices")&(des_fredmd_df["tcode"] == 6)]
+    # prices_var_names = des_prices["fred"]
+    # fredmd_prices_df = raw_fredmd_df[list(prices_var_names)]
+    # change_fredmd_prices_df = np.log(fredmd_prices_df).diff()
+
+    # # add log diff prices to original data
+    # selected_transf_fredmd_df = transf_fredmd_df.drop(list(prices_var_names), axis=1)
+    # target_df = pd.concat([selected_transf_fredmd_df, change_fredmd_prices_df], axis=1)
+
+    # delete rows with NaN in all columns
+    transf_fredmd_df = transf_fredmd_df.dropna(how="all")
+    raw_fredmd_df = raw_fredmd_df.dropna(how="all")
+
+    # fix index name
+    transf_fredmd_df.index.name = "date"
+    raw_fredmd_df.index.name = "date"
+
+    # export
+    transf_fredmd_df.loc[start_date:].to_csv(os.path.join(INPUTS_PATH,  "fredmd_transf_df.csv"))
+    raw_fredmd_df.loc[start_date:].to_csv(os.path.join(INPUTS_PATH,  "fredmd_raw_df.csv"))
+
+def merge_fred_etfs():
+    # read datasets
+    transf_fredmd = pd.read_csv(os.path.join(INPUTS_PATH,  "fredmd_transf_df.csv"))
+    etfs_returns = pd.read_csv(os.path.join(INPUTS_PATH,  "wrds_etf_returns.csv"))
+
+    # fix fred dates
+    transf_fredmd['date'] = pd.to_datetime(transf_fredmd['date'])
+    transf_fredmd.set_index('date', inplace=True)
+    transf_fredmd = transf_fredmd.astype(float)
+
+    # select subset of etfs
+    etfs_returns = etfs_returns[[col for col in etfs_returns.columns if "t+1" not in col]]
+    etfs_returns = etfs_returns[['date'] + etfs_large]
+
+    # fix etfs dates
+    etfs_returns["date"] = pd.to_datetime(etfs_returns["date"])
+    etfs_returns["date"] = etfs_returns["date"] + pd.DateOffset(months=1)
+    etfs_returns = etfs_returns.set_index("date")
+    etfs_returns = etfs_returns.resample("MS").last().ffill()
+
+    # fill missing values
+    transf_fredmd = transf_fredmd.interpolate(method='linear', limit_direction='forward', axis=0)
+    transf_fredmd = transf_fredmd.fillna(method='ffill')
+    transf_fredmd = transf_fredmd.fillna(method='bfill')
+
+    # shift forward
+    transf_fredmd = transf_fredmd.shift(+1).dropna()
+
+    # merge etfs with fred data
+    final_df = pd.merge(etfs_returns, transf_fredmd, left_index=True, right_index=True)
+
+    # Group by year and count the number of months (rows) in each year
+    final_df['year'] = final_df.index.year
+    months_per_year = final_df.groupby('year').size()
+
+    # Check if all years have 12 months
+    all_years_have_12_months = months_per_year.eq(12).all()
+
+    if all_years_have_12_months:
+        print("Each year has 12 months.")
+    else:
+        print("Some years do not have 12 months.")
+        # Display the years that do not have 12 months
+        print(months_per_year[months_per_year != 12])
+
+    # drop year column
+    final_df.drop(['year'], axis=1, inplace=True)
+
+    # export
+    final_df.to_csv(os.path.join(INPUTS_PATH,  "etfs_macro_large.csv"))
 
 if __name__ == "__main__":
-
-    # Initialize the FRED API with your API key
-    fred = Fred(api_key='12d77a40907e43a92e9a295801db18d2')
-    fred_raw = pd.read_csv('https://files.stlouisfed.org/files/htdocs/fred-md/monthly/current.csv')
-    all_series = fred_raw.drop("sasdate", axis=1).columns
-
-    transform = fred_raw.loc[0,].reset_index()
-    transform.columns = transform.iloc[0,]
-    transform = transform.drop(0)
-    transform.columns = ["fred", "tcode"]
-
-    fred_desc = pd.read_csv(os.path.join(os.path.dirname(__file__), "data", "utils", "fredmd_description.csv"), sep=";")
-
-    fred_series = []
-    error_series = []
-
-    # Define today's date for ALFRED API queries
-    today = datetime.date.today().strftime('%Y-%m-%d')
-    for series_id in tqdm(all_series, desc="Fetching FRED data", total=len(all_series)):
-        try:
-            # Try fetching as usual (from FRED)
-            all_releases = fred.get_series_all_releases(series_id)
-        except Exception as e:
-            print(f"Error fetching {series_id} from ALFRED: {e}")
-            error_series.append(series_id)
-            continue
-
-        # Process and store data
-        all_releases_df = pd.DataFrame(all_releases)
-        all_releases_df.rename(columns={'realtime_start': 'actual_release_date', 'date': 'date', 'value': 'value'}, inplace=True)
-        fred_raw = all_releases_df[['actual_release_date', 'value']]
-        fred_raw.rename(columns={'actual_release_date': 'date', 'value': series_id}, inplace=True)
-        fred_raw["date"] = pd.to_datetime(fred_raw["date"])
-        fred_raw.set_index("date", inplace=True)
-        fred_raw[series_id] = pd.to_numeric(fred_raw[series_id], errors='coerce')
-
-        tcode = transform[transform["fred"] == series_id]["tcode"].iloc[0]
-        ttype = fred_desc[fred_desc["tcode"] == tcode]["ttype"].iloc[0]
-
-        if ttype == "First difference of natural log: ln(x)-ln(x-1)":
-            tmp = np.log(fred_raw[series_id]).diff()
-        elif ttype == "Level (i.e. no transformation): x(t)":
-            tmp = fred_raw[series_id]
-        elif ttype == "First difference: x(t)-x(t-1)":
-            tmp = fred_raw[series_id].diff()
-        elif ttype == "Natural log: ln(x)":
-            tmp = np.log(fred_raw[series_id])
-        elif ttype == "Second difference of natural log: (ln(x)-ln(x-1))-(ln(x-1)-ln(x-2))":
-            tmp = np.log(fred_raw[series_id]).diff(1) - np.log(fred_raw[series_id]).diff(2)
-        elif ttype == "First difference of percent change: (x(t)/x(t-1)-1)-(x(t-1)/x(t-2)-1)":
-            tmp = fred_raw[series_id].pct_change(1).diff() - fred_raw[series_id].pct_change(2).diff() 
-        else:
-            raise ValueError("Unknown transformation type")
-
-        fred_series.append(tmp.resample("B").last())
-
-    fred_data = pd.concat(fred_series, axis=1).ffill()
-
-    # load forecast data and preprocess
-    etfs_data = pd.read_csv(os.path.join(os.path.dirname(__file__), "data", "inputs", "wrds_etf_returns.csv"))
-    etfs_data = etfs_data[[col for col in etfs_data.columns if "t+1" not in col]]
-
-    ## fix dates
-    etfs_data["date"] = pd.to_datetime(etfs_data["date"])
-    etfs_data = etfs_data.set_index("date")
-
-    # compute first non-nan index
-    returns_data = etfs_data.copy()
-    first_non_nan = returns_data.apply(lambda x: x.first_valid_index())
-
-    # subset etfs
-    big_etfs_index = list(first_non_nan[first_non_nan <= "2000-02-02"].index)
-    big_returns_data = returns_data[big_etfs_index].dropna()
-
-    mid_etfs_index = list(first_non_nan[first_non_nan <= "2007-05-19"].index)
-    mid_returns_data = returns_data[mid_etfs_index].dropna()
-
-    small_etfs_index = list(first_non_nan[first_non_nan <= "2011-12-16"].index)
-    small_returns_data = returns_data[small_etfs_index].dropna()
-
-    # merge datasets
-    big_data = pd.merge(big_returns_data, fred_data, left_index=True, right_index=True)
-    mid_data = pd.merge(mid_returns_data, fred_data, left_index=True, right_index=True)
-    small_data = pd.merge(small_returns_data, fred_data, left_index=True, right_index=True)
+    gen_fred_dataset(start_date=START_DATE)
+    merge_fred_etfs()
+  
 
 
-    # save datasets
-    big_data.to_csv(os.path.join(os.path.dirname(__file__), "data", "inputs", "etfs_macro_large.csv"))
-    mid_data.to_csv(os.path.join(os.path.dirname(__file__), "data", "inputs", "etfs_macro_mid.csv"))
-    small_data.to_csv(os.path.join(os.path.dirname(__file__), "data", "inputs", "etfs_macro_small.csv"))
 
