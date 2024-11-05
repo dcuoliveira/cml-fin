@@ -12,7 +12,7 @@ parser = argparse.ArgumentParser(description="Run forecast.")
 parser.add_argument("--estimation_window", type=int, default=12 * 7)
 parser.add_argument("--p", type=int, default=-1)
 parser.add_argument("--correl_window", type=int, default=100000) # all available data
-parser.add_argument("--beta_threshold", type=float, default=0.4)
+parser.add_argument("--beta_threshold", type=float, default=0)
 parser.add_argument("--pval_threshold", type=float, default=0.05)
 parser.add_argument("--fix_start", type=str, default=True)
 parser.add_argument("--incercept", type=str, default=True)
