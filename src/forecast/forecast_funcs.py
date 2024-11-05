@@ -85,7 +85,8 @@ def run_forecast(data: pd.DataFrame,
                  clustering_method: str,
                  n_clusters: int = 0,
                  cluster_threshold: float = 0.8,
-                 intra_cluster_selection: str = "rank"):
+                 intra_cluster_selection: str = "rank",
+                 max_p=3):
     
     # sanity check causal representation learning method
     if (intra_cluster_selection == "pca") and ((clustering_method == "no") or (n_clusters ==0)):
@@ -214,7 +215,7 @@ def run_forecast(data: pd.DataFrame,
             if selected_p == 0:
                 selected_p = 1
         else:
-            selected_p = p
+            selected_p = min(p, max_p)
 
         test_df = test_df[[target] + selected_columns].iloc[(estimation_window + step - selected_p):(estimation_window + step + 1), :]
 

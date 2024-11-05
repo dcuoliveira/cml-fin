@@ -11,12 +11,13 @@ parser = argparse.ArgumentParser(description="Run forecast.")
 
 parser.add_argument("--estimation_window", type=int, default=12 * 7)
 parser.add_argument("--p", type=int, default=-1)
+parser.add_argument("--max_p", type=int, default=3)
 parser.add_argument("--correl_window", type=int, default=100000) # all available data
 parser.add_argument("--beta_threshold", type=float, default=0)
 parser.add_argument("--pval_threshold", type=float, default=0.05)
 parser.add_argument("--fix_start", type=str, default=True)
 parser.add_argument("--incercept", type=str, default=True)
-parser.add_argument("--fs_method", type=str, default="seqICP", choices=["var-lingam", "dynotears", "lasso1", "lasso2", "pairwise-granger", "multivariate-granger", "sfstscv-lin", "sfstscv-rf", "rfetscv-lin", "rfetscv-rf", "pcmci", "seqICP"])
+parser.add_argument("--fs_method", type=str, default="pcmci", choices=["var-lingam", "dynotears", "lasso1", "lasso2", "pairwise-granger", "multivariate-granger", "sfstscv-lin", "sfstscv-rf", "rfetscv-lin", "rfetscv-rf", "pcmci", "seqICP"])
 parser.add_argument("--opt_k_method", type=str, default="no", choices=["eigen", "sillhouette", "elbow", "no"])
 parser.add_argument("--clustering_method", type=str, default="no", choices=["kmeans", "rolling_kmeans", "spectral", "rolling_spectral", "no"])
 parser.add_argument("--n_clusters", type=int, default=0) # 0 for auto select k
@@ -62,6 +63,7 @@ if __name__ == "__main__":
                             estimation_window=args.estimation_window,
                             correl_window=args.correl_window,
                             p=args.p,
+                            max_p=args.max_p,
                             beta_threshold=args.beta_threshold,
                             pval_threshold=args.pval_threshold,
                             incercept=args.incercept,
