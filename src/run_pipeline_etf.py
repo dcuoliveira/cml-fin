@@ -9,7 +9,7 @@ from utils.parsers import str_2_bool
 
 parser = argparse.ArgumentParser(description="Run forecast.")
 
-parser.add_argument("--estimation_window", type=int, default=12 * 7)
+parser.add_argument("--estimation_window", type=int, default=12 * 10)
 parser.add_argument("--p", type=int, default=-1)
 parser.add_argument("--max_p", type=int, default=3)
 parser.add_argument("--correl_window", type=int, default=100000) # all available data
