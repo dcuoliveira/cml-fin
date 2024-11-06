@@ -72,9 +72,6 @@ def merge_fred_etfs():
     transf_fredmd = transf_fredmd.fillna(method='ffill')
     transf_fredmd = transf_fredmd.fillna(method='bfill')
 
-    # shift forward
-    transf_fredmd = transf_fredmd.shift(+1).dropna()
-
     # merge etfs with fred data
     final_df = pd.merge(etfs_returns, transf_fredmd, left_index=True, right_index=True)
 
@@ -97,6 +94,10 @@ def merge_fred_etfs():
 
     # export
     final_df.to_csv(os.path.join(INPUTS_PATH,  "etfs_macro_large.csv"))
+
+    # shift forward
+    final_df = final_df.shift(+1).dropna()
+    final_df.to_csv(os.path.join(INPUTS_PATH,  "etfs_macro_large_lagged.csv"))
 
 if __name__ == "__main__":
     gen_fred_dataset(start_date=START_DATE)
