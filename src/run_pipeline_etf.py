@@ -10,19 +10,19 @@ from utils.parsers import str_2_bool
 parser = argparse.ArgumentParser(description="Run forecast.")
 
 parser.add_argument("--estimation_window", type=int, default=12 * 7)
-parser.add_argument("--p", type=int, default=-1)
+parser.add_argument("--p", type=int, default=1)
 parser.add_argument("--max_p", type=int, default=3)
 parser.add_argument("--correl_window", type=int, default=100000) # all available data
 parser.add_argument("--beta_threshold", type=float, default=0)
 parser.add_argument("--pval_threshold", type=float, default=0.05)
 parser.add_argument("--fix_start", type=str, default=True)
 parser.add_argument("--incercept", type=str, default=True)
-parser.add_argument("--fs_method", type=str, default="sfscv-forward-lin", choices=["var-lingam", "dynotears", "lasso1", "lasso2", "pairwise-granger", "multivariate-granger", 'sfscv-backward-svm', "sfscv-forward-svm", "sfscv-backward-rf", "sfscv-forward-rf", "sfscv-backward-lin", "sfscv-forward-lin", 'sfstscv-backward-svm', "sfstscv-forward-svm", "sfstscv-backward-rf", "sfstscv-forward-rf", "sfstscv-backward-lin", "sfstscv-forward-lin", "pcmci", "seqICP"])
+parser.add_argument("--fs_method", type=str, default="pcmci", choices=["var-lingam", "dynotears", "lasso1", "lasso2", "pairwise-granger", "multivariate-granger", 'sfscv-backward-svm', "sfscv-forward-svm", "sfscv-backward-rf", "sfscv-forward-rf", "sfscv-backward-lin", "sfscv-forward-lin", 'sfstscv-backward-svm', "sfstscv-forward-svm", "sfstscv-backward-rf", "sfstscv-forward-rf", "sfstscv-backward-lin", "sfstscv-forward-lin", "pcmci", "seqICP"])
 parser.add_argument("--opt_k_method", type=str, default="no", choices=["eigen", "sillhouette", "elbow", "no"])
 parser.add_argument("--clustering_method", type=str, default="no", choices=["kmeans", "rolling_kmeans", "spectral", "rolling_spectral", "no"])
 parser.add_argument("--n_clusters", type=int, default=0) # 0 for auto select k
 parser.add_argument("--intra_cluster_selection", type=str, default="no", choices=["rank", "pca", "no"])
-parser.add_argument("--data_name", type=str, default="monetary-policy-processed")
+parser.add_argument("--data_name", type=str, default="etfs_macro_large")
 parser.add_argument("--inputs_path", type=str, default=os.path.join(os.path.dirname(__file__), "data", "inputs"))
 parser.add_argument("--outputs_path", type=str, default=os.path.join(os.path.dirname(__file__), "data", "outputs"))
 parser.add_argument("--target", type=str, default="ldEXME")
