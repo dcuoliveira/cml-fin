@@ -212,7 +212,7 @@ def run_forecast(data: pd.DataFrame,
         # select optimal lag
         if p == -1:
             var_select_model = VAR(train_df)
-            selected_p = var_select_model.select_order(maxlags=6)
+            selected_p = var_select_model.select_order(maxlags=max_p)
             selected_p = selected_p.selected_orders["aic"]
             if selected_p == 0:
                 selected_p = 1
