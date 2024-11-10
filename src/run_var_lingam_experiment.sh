@@ -1,10 +1,10 @@
-python run_pipeline_etf.py --fs_method var-lingam --opt_k_method no --clustering_method no --n_clusters 0 --intra_cluster_selection no --target SPY --data_name etfs_macro_large --p 1 &
-python run_pipeline_etf.py --fs_method var-lingam --opt_k_method no --clustering_method no --n_clusters 0 --intra_cluster_selection no --target XLI --data_name etfs_macro_large --p 1 &
-python run_pipeline_etf.py --fs_method var-lingam --opt_k_method no --clustering_method no --n_clusters 0 --intra_cluster_selection no --target XLE --data_name etfs_macro_large --p 1 &
-python run_pipeline_etf.py --fs_method var-lingam --opt_k_method no --clustering_method no --n_clusters 0 --intra_cluster_selection no --target XLK --data_name etfs_macro_large --p 1 &
-python run_pipeline_etf.py --fs_method var-lingam --opt_k_method no --clustering_method no --n_clusters 0 --intra_cluster_selection no --target XLV --data_name etfs_macro_large --p 1 &
-python run_pipeline_etf.py --fs_method var-lingam --opt_k_method no --clustering_method no --n_clusters 0 --intra_cluster_selection no --target XLU --data_name etfs_macro_large --p 1 &
-python run_pipeline_etf.py --fs_method var-lingam --opt_k_method no --clustering_method no --n_clusters 0 --intra_cluster_selection no --target XLF --data_name etfs_macro_large --p 1 &
-python run_pipeline_etf.py --fs_method var-lingam --opt_k_method no --clustering_method no --n_clusters 0 --intra_cluster_selection no --target XLY --data_name etfs_macro_large --p 1 &
-python run_pipeline_etf.py --fs_method var-lingam --opt_k_method no --clustering_method no --n_clusters 0 --intra_cluster_selection no --target XLP --data_name etfs_macro_large --p 1 &
-python run_pipeline_etf.py --fs_method var-lingam --opt_k_method no --clustering_method no --n_clusters 0 --intra_cluster_selection no --target XLB --data_name etfs_macro_large --p 1 &
+python run_pipeline_etf.py --fs_method var-lingam --opt_k_method no --clustering_method no --n_clusters 0 --intra_cluster_selection no --target SPY --data_name etfs_macro_large --p 1
+python run_pipeline_etf.py --fs_method var-lingam --opt_k_method no --clustering_method no --n_clusters 0 --intra_cluster_selection no --target XLI --data_name etfs_macro_large --p 1
+python run_pipeline_etf.py --fs_method var-lingam --opt_k_method no --clustering_method no --n_clusters 0 --intra_cluster_selection no --target XLE --data_name etfs_macro_large --p 1
+python run_pipeline_etf.py --fs_method var-lingam --opt_k_method no --clustering_method no --n_clusters 0 --intra_cluster_selection no --target XLK --data_name etfs_macro_large --p 1
+python run_pipeline_etf.py --fs_method var-lingam --opt_k_method no --clustering_method no --n_clusters 0 --intra_cluster_selection no --target XLV --data_name etfs_macro_large --p 1
+python run_pipeline_etf.py --fs_method var-lingam --opt_k_method no --clustering_method no --n_clusters 0 --intra_cluster_selection no --target XLU --data_name etfs_macro_large --p 1
+python run_pipeline_etf.py --fs_method var-lingam --opt_k_method no --clustering_method no --n_clusters 0 --intra_cluster_selection no --target XLF --data_name etfs_macro_large --p 1
+python run_pipeline_etf.py --fs_method var-lingam --opt_k_method no --clustering_method no --n_clusters 0 --intra_cluster_selection no --target XLY --data_name etfs_macro_large --p 1
+python run_pipeline_etf.py --fs_method var-lingam --opt_k_method no --clustering_method no --n_clusters 0 --intra_cluster_selection no --target XLP --data_name etfs_macro_large --p 1
+python run_pipeline_etf.py --fs_method var-lingam --opt_k_method no --clustering_method no --n_clusters 0 --intra_cluster_selection no --target XLB --data_name etfs_macro_large --p 1
