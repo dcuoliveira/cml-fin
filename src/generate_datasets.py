@@ -16,11 +16,11 @@ def gen_fred_dataset(start_date):
     raw_fredmd_df = fredmd.rawseries
     transf_fredmd_df = fredmd.series
 
-    # # descriptions
-    # des_raw_fredmd_df = pd.DataFrame(raw_fredmd_df.iloc[0]).reset_index()
-    # des_raw_fredmd_df.columns = ["fred", "ttype"]
-    # des_raw_fredmd_df = des_raw_fredmd_df.drop([0], axis=0)
-    # des_fredmd_df = pd.read_csv(os.path.join(DATA_UTILS_PATH, "fredmd_description.csv"), delimiter=";")
+    # descriptions
+    des_raw_fredmd_df = pd.DataFrame(raw_fredmd_df.iloc[0]).reset_index()
+    des_raw_fredmd_df.columns = ["fred", "ttype"]
+    des_raw_fredmd_df = des_raw_fredmd_df.drop([0], axis=0)
+    des_fredmd_df = pd.read_csv(os.path.join(DATA_UTILS_PATH, "fredmd_description.csv"), delimiter=";")
 
     # # select variables with description
     # raw_fredmd_df = raw_fredmd_df[list(set(list(des_fredmd_df["fred"])) & set(list(raw_fredmd_df.columns)))]
@@ -42,6 +42,13 @@ def gen_fred_dataset(start_date):
     # fix index name
     transf_fredmd_df.index.name = "date"
     raw_fredmd_df.index.name = "date"
+
+    #
+    dict_df = des_fredmd_df[['fred', 'group']]
+    dict_df = dict_df.loc[dict_df['group'] != 'Stock Market']
+    names_dict = list(dict_df['fred'])
+    transf_fredmd_df = transf_fredmd_df[list(transf_fredmd_df.columns[transf_fredmd_df.columns.isin(names_dict)])]
+    raw_fredmd_df = raw_fredmd_df[list(raw_fredmd_df.columns[raw_fredmd_df.columns.isin(names_dict)])]
 
     # export
     transf_fredmd_df.loc[start_date:].to_csv(os.path.join(INPUTS_PATH,  "fredmd_transf_df.csv"))
