@@ -25,6 +25,7 @@ parser.add_argument("--intra_cluster_selection", type=str, default="no", choices
 parser.add_argument("--data_name", type=str, default="etfs_macro_large")
 parser.add_argument("--inputs_path", type=str, default=os.path.join(os.path.dirname(__file__), "data", "inputs"))
 parser.add_argument("--outputs_path", type=str, default=os.path.join(os.path.dirname(__file__), "data", "outputs"))
+parser.add_argument("--apply_lasso", type=str, default=False)
 parser.add_argument("--target", type=str, default="ldEXME")
 
 if __name__ == "__main__":
@@ -33,6 +34,7 @@ if __name__ == "__main__":
 
     args.fix_start = str_2_bool(args.fix_start)
     args.incercept = str_2_bool(args.incercept)
+    args.apply_lasso = str_2_bool(args.apply_lasso)
 
     data = pd.read_csv(os.path.join(args.inputs_path, f'{args.data_name}.csv'))
 
@@ -71,7 +73,8 @@ if __name__ == "__main__":
                             opt_k_method=args.opt_k_method,
                             clustering_method=args.clustering_method,
                             n_clusters=args.n_clusters,
-                            intra_cluster_selection=args.intra_cluster_selection)
+                            intra_cluster_selection=args.intra_cluster_selection,
+                            apply_lasso=args.apply_lasso)
 
     results['args'] = args
 

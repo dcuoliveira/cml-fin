@@ -89,7 +89,8 @@ def run_forecast(data: pd.DataFrame,
                  n_iter: int=10,
                  n_jobs: int = -1,
                  seed: int = 19940202,
-                 max_p: int=3):
+                 max_p: int=3,
+                 apply_lasso: bool=False):
     
     # sanity check causal representation learning method
     if (intra_cluster_selection == "pca") and ((clustering_method == "no") or (n_clusters ==0)):
@@ -234,16 +235,20 @@ def run_forecast(data: pd.DataFrame,
 
         if fs_method == "var-lingam":
 
-            # since var-lingam is based on the VAR model, it cannot deal with collinearity => run lasso first
-            alphas = np.linspace(0.0001, 0.05, 100) # we dont want to apply a very strong regularization, but we want var-lingam to do most of the work
-            lasso_cv = LassoCV(cv=5, random_state=42, max_iter=100000, alphas=alphas).fit(Xt_train, yt_train.values.ravel())
+            if apply_lasso:
+                # since var-lingam is based on the VAR model, it cannot deal with collinearity => run lasso first
+                alphas = np.linspace(0.0001, 0.05, 100) # we dont want to apply a very strong regularization, but we want var-lingam to do most of the work
+                lasso_cv = LassoCV(cv=5, random_state=42, max_iter=100000, alphas=alphas).fit(Xt_train, yt_train.values.ravel())
 
-            # output the selected coefficients
-            lasso_coefficients = pd.Series(lasso_cv.coef_, index=Xt_train.columns)
-            selected_features = lasso_coefficients[lasso_coefficients != 0].index.tolist()
-             
-            data_train = pd.concat([yt_train, Xt_train[selected_features]], axis=1)
-            data_test = pd.concat([yt_test, Xt_test[selected_features]], axis=1)
+                # output the selected coefficients
+                lasso_coefficients = pd.Series(lasso_cv.coef_, index=Xt_train.columns)
+                selected_features = lasso_coefficients[lasso_coefficients != 0].index.tolist()
+                
+                data_train = pd.concat([yt_train, Xt_train[selected_features]], axis=1)
+                data_test = pd.concat([yt_test, Xt_test[selected_features]], axis=1)
+            else:
+                data_train = pd.concat([yt_train, Xt_train], axis=1)
+                data_test = pd.concat([yt_test, Xt_test], axis=1)
 
             # run VAR-LiNGAM
             var_lingam = lingam.VARLiNGAM(lags=selected_p, criterion="none")
@@ -357,16 +362,20 @@ def run_forecast(data: pd.DataFrame,
             Xt_test = data_test.dropna()
         elif fs_method == "multivariate-granger":
 
-            # since multivariate-granger is based on the VAR model, it cannot deal with collinearity => run lasso first
-            alphas = np.linspace(0.0001, 0.05, 100) # we dont want to apply a very strong regularization, but we want multivariate-granger to do most of the work
-            lasso_cv = LassoCV(cv=5, random_state=42, max_iter=100000, alphas=alphas).fit(Xt_train, yt_train.values.ravel())
+            if apply_lasso:
+                # since var-lingam is based on the VAR model, it cannot deal with collinearity => run lasso first
+                alphas = np.linspace(0.0001, 0.05, 100) # we dont want to apply a very strong regularization, but we want var-lingam to do most of the work
+                lasso_cv = LassoCV(cv=5, random_state=42, max_iter=100000, alphas=alphas).fit(Xt_train, yt_train.values.ravel())
 
-            # output the selected coefficients
-            lasso_coefficients = pd.Series(lasso_cv.coef_, index=Xt_train.columns)
-            selected_features = lasso_coefficients[lasso_coefficients != 0].index.tolist()
-
-            data_train = pd.concat([yt_train, Xt_train[selected_features]], axis=1)
-            data_test = pd.concat([yt_test, Xt_test[selected_features]], axis=1)
+                # output the selected coefficients
+                lasso_coefficients = pd.Series(lasso_cv.coef_, index=Xt_train.columns)
+                selected_features = lasso_coefficients[lasso_coefficients != 0].index.tolist()
+                
+                data_train = pd.concat([yt_train, Xt_train[selected_features]], axis=1)
+                data_test = pd.concat([yt_test, Xt_test[selected_features]], axis=1)
+            else:
+                data_train = pd.concat([yt_train, Xt_train], axis=1)
+                data_test = pd.concat([yt_test, Xt_test], axis=1)
 
             # run grander causality test for each feature
             var_fit = VAR(data_train).fit(maxlags=selected_p)
@@ -440,8 +449,20 @@ def run_forecast(data: pd.DataFrame,
             Xt_train = data_train.dropna()
             Xt_test = data_test.dropna()
         elif fs_method == "seqICP":
-            data_train = pd.concat([yt_train, Xt_train], axis=1)
-            data_test = pd.concat([yt_test, Xt_test], axis=1)
+            if apply_lasso:
+                # since var-lingam is based on the VAR model, it cannot deal with collinearity => run lasso first
+                alphas = np.linspace(0.0001, 0.05, 100) # we dont want to apply a very strong regularization, but we want var-lingam to do most of the work
+                lasso_cv = LassoCV(cv=5, random_state=42, max_iter=100000, alphas=alphas).fit(Xt_train, yt_train.values.ravel())
+
+                # output the selected coefficients
+                lasso_coefficients = pd.Series(lasso_cv.coef_, index=Xt_train.columns)
+                selected_features = lasso_coefficients[lasso_coefficients != 0].index.tolist()
+                
+                data_train = pd.concat([yt_train, Xt_train[selected_features]], axis=1)
+                data_test = pd.concat([yt_test, Xt_test[selected_features]], axis=1)
+            else:
+                data_train = pd.concat([yt_train, Xt_train], axis=1)
+                data_test = pd.concat([yt_test, Xt_test], axis=1)
             
             # convert dataframe to R objects
             X_train = data_train.drop(target, axis=1).values
