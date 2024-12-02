@@ -238,7 +238,7 @@ def run_forecast(data: pd.DataFrame,
             if apply_lasso:
                 # since var-lingam is based on the VAR model, it cannot deal with collinearity => run lasso first
                 alphas = np.linspace(0.0001, 0.05, 100) # we dont want to apply a very strong regularization, but we want var-lingam to do most of the work
-                lasso_cv = LassoCV(cv=5, random_state=42, max_iter=100000, alphas=alphas).fit(Xt_train, yt_train.values.ravel())
+                lasso_cv = LassoCV(cv=5, random_state=42, max_iter=1000000, alphas=alphas).fit(Xt_train, yt_train.values.ravel())
 
                 # output the selected coefficients
                 lasso_coefficients = pd.Series(lasso_cv.coef_, index=Xt_train.columns)
@@ -365,7 +365,7 @@ def run_forecast(data: pd.DataFrame,
             if apply_lasso:
                 # since var-lingam is based on the VAR model, it cannot deal with collinearity => run lasso first
                 alphas = np.linspace(0.0001, 0.05, 100) # we dont want to apply a very strong regularization, but we want var-lingam to do most of the work
-                lasso_cv = LassoCV(cv=5, random_state=42, max_iter=100000, alphas=alphas).fit(Xt_train, yt_train.values.ravel())
+                lasso_cv = LassoCV(cv=5, random_state=42, max_iter=1000000, alphas=alphas).fit(Xt_train, yt_train.values.ravel())
 
                 # output the selected coefficients
                 lasso_coefficients = pd.Series(lasso_cv.coef_, index=Xt_train.columns)
@@ -452,7 +452,7 @@ def run_forecast(data: pd.DataFrame,
             if apply_lasso:
                 # since var-lingam is based on the VAR model, it cannot deal with collinearity => run lasso first
                 alphas = np.linspace(0.0001, 0.05, 100) # we dont want to apply a very strong regularization, but we want var-lingam to do most of the work
-                lasso_cv = LassoCV(cv=5, random_state=42, max_iter=100000, alphas=alphas).fit(Xt_train, yt_train.values.ravel())
+                lasso_cv = LassoCV(cv=5, random_state=42, max_iter=1000000, alphas=alphas).fit(Xt_train, yt_train.values.ravel())
 
                 # output the selected coefficients
                 lasso_coefficients = pd.Series(lasso_cv.coef_, index=Xt_train.columns)
