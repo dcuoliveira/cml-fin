@@ -71,6 +71,20 @@ def cv_opt(X, y, model_wrapper, cv_type, n_splits, n_iter, seed, verbose, n_jobs
 
     return model_fit
 
+def run_lasso_filter(yt_train, Xt_train, yt_test, Xt_test):
+    # since var-lingam is based on the VAR model, it cannot deal with collinearity => run lasso first
+    alphas = np.linspace(0.0001, 0.2, 100) # we dont want to apply a very strong regularization, but we want var-lingam to do most of the work
+    lasso_cv = LassoCV(cv=5, random_state=42, max_iter=1000000, alphas=alphas).fit(Xt_train, yt_train.values.ravel())
+
+    # output the selected coefficients
+    lasso_coefficients = pd.Series(lasso_cv.coef_, index=Xt_train.columns)
+    selected_features = lasso_coefficients[lasso_coefficients != 0].index.tolist()
+    
+    data_train = pd.concat([yt_train, Xt_train[selected_features]], axis=1)
+    data_test = pd.concat([yt_test, Xt_test[selected_features]], axis=1)
+
+    return data_train, data_test
+
 def run_forecast(data: pd.DataFrame,
                  target: str,
                  fix_start: bool,
@@ -236,16 +250,7 @@ def run_forecast(data: pd.DataFrame,
         if fs_method == "var-lingam":
 
             if apply_lasso:
-                # since var-lingam is based on the VAR model, it cannot deal with collinearity => run lasso first
-                alphas = np.linspace(0.0001, 0.05, 100) # we dont want to apply a very strong regularization, but we want var-lingam to do most of the work
-                lasso_cv = LassoCV(cv=5, random_state=42, max_iter=1000000, alphas=alphas).fit(Xt_train, yt_train.values.ravel())
-
-                # output the selected coefficients
-                lasso_coefficients = pd.Series(lasso_cv.coef_, index=Xt_train.columns)
-                selected_features = lasso_coefficients[lasso_coefficients != 0].index.tolist()
-                
-                data_train = pd.concat([yt_train, Xt_train[selected_features]], axis=1)
-                data_test = pd.concat([yt_test, Xt_test[selected_features]], axis=1)
+                data_train, data_test = run_lasso_filter(yt_train, Xt_train, yt_test, Xt_test)
             else:
                 data_train = pd.concat([yt_train, Xt_train], axis=1)
                 data_test = pd.concat([yt_test, Xt_test], axis=1)
@@ -291,88 +296,10 @@ def run_forecast(data: pd.DataFrame,
                 
             Xt_train = data_train.dropna()
             Xt_test = data_test.dropna()
-        elif (fs_method == "lasso1") or (fs_method == "lasso2"):
-            Xt_train = pd.concat([yt_train, Xt_train], axis=1)
-            Xt_test = pd.concat([yt_test, Xt_test], axis=1)
-
-            # create lags of Xt variables
-            data_train = add_and_keep_lags_only(data=data_train, lags=selected_p)
-            data_test = add_and_keep_lags_only(data=data_test, lags=selected_p)
-
-            Xt_train = Xt_train.dropna()
-            yt_train = yt_train.loc[Xt_train.index]
-
-            # cv type
-            if fs_method == "lasso1":
-                method = "default"
-            elif fs_method == "lasso2":
-                method = "fht"
-            else:
-                raise Exception(f"fs method not registered: {fs_method}")
-
-            # train lasso model
-            model_fit = cv_opt(X=Xt_train,
-                               y=yt_train,
-                               model_wrapper=LassoWrapper(hyperparameter_space_method=method),
-                               cv_type="cv",
-                               n_splits=2,
-                               n_iter=10,
-                               seed=2294,
-                               verbose=False,
-                               n_jobs=1,
-                               scoring=make_scorer(mean_squared_error))
-
-            # fit best model
-            lasso_best_fit = model_fit.best_estimator_.fit(Xt_train, yt_train)
-
-            # Get the features that have non-zero coefficients
-            selected_features = np.where(lasso_best_fit.coef_ != 0)[0]
-            Xt_train_selected = Xt_train[Xt_train.columns[selected_features]]
-
-            if Xt_train_selected.shape[1] != 0:
-                # Fit OLS to the selected features to compute p-values
-                ols_model = OLS(yt_train, Xt_train_selected).fit()
-
-                B1_df = pd.DataFrame(ols_model.params, index=Xt_train_selected.columns, columns=[f"{target}(t)"]).sort_values(ascending=False, by=f"{target}(t)")
-
-                # select variables with beta > threshold
-                selected_variables = list(B1_df[ols_model.pvalues < pval_threshold].dropna().index)
-            else:
-                selected_variables = []
-        elif fs_method == "pairwise-granger":
-            data_train = pd.concat([yt_train, Xt_train], axis=1)
-            data_test = pd.concat([yt_test, Xt_test], axis=1)
-
-            selected_variables = []
-            # run grander causality test for each feature
-            for colname in data_train.columns:
-                test_result = grangercausalitytests(x=data_train[[target, colname]], maxlag=selected_p, verbose=False, addconst=incercept)
-
-                # select variables with p-value < 0.05
-                for lag in test_result.keys():
-                    pval = test_result[lag][0]['ssr_ftest'][1]
-                    if pval <= pval_threshold:
-                        selected_variables += [f"{colname}(t-{lag})"]
-
-            # create lags of Xt variables
-            data_train = add_and_keep_lags_only(data=data_train, lags=selected_p)
-            data_test = add_and_keep_lags_only(data=data_test, lags=selected_p)
-
-            Xt_train = data_train.dropna()
-            Xt_test = data_test.dropna()
         elif fs_method == "multivariate-granger":
 
             if apply_lasso:
-                # since var-lingam is based on the VAR model, it cannot deal with collinearity => run lasso first
-                alphas = np.linspace(0.0001, 0.05, 100) # we dont want to apply a very strong regularization, but we want var-lingam to do most of the work
-                lasso_cv = LassoCV(cv=5, random_state=42, max_iter=1000000, alphas=alphas).fit(Xt_train, yt_train.values.ravel())
-
-                # output the selected coefficients
-                lasso_coefficients = pd.Series(lasso_cv.coef_, index=Xt_train.columns)
-                selected_features = lasso_coefficients[lasso_coefficients != 0].index.tolist()
-                
-                data_train = pd.concat([yt_train, Xt_train[selected_features]], axis=1)
-                data_test = pd.concat([yt_test, Xt_test[selected_features]], axis=1)
+                data_train, data_test = run_lasso_filter(yt_train, Xt_train, yt_test, Xt_test)
             else:
                 data_train = pd.concat([yt_train, Xt_train], axis=1)
                 data_test = pd.concat([yt_test, Xt_test], axis=1)
@@ -396,8 +323,11 @@ def run_forecast(data: pd.DataFrame,
             Xt_train = data_train.dropna()
             Xt_test = data_test.dropna()
         elif fs_method == "dynotears":
-            data_train = pd.concat([yt_train, Xt_train], axis=1)
-            data_test = pd.concat([yt_test, Xt_test], axis=1)
+            if apply_lasso:
+                data_train, data_test = run_lasso_filter(yt_train, Xt_train, yt_test, Xt_test)
+            else:
+                data_train = pd.concat([yt_train, Xt_train], axis=1)
+                data_test = pd.concat([yt_test, Xt_test], axis=1)
 
             dates = data_train.index
             target_data = data_train.reset_index(drop=True)
@@ -449,17 +379,9 @@ def run_forecast(data: pd.DataFrame,
             Xt_train = data_train.dropna()
             Xt_test = data_test.dropna()
         elif fs_method == "seqICP":
-            if apply_lasso:
-                # since var-lingam is based on the VAR model, it cannot deal with collinearity => run lasso first
-                alphas = np.linspace(0.0001, 0.05, 100) # we dont want to apply a very strong regularization, but we want var-lingam to do most of the work
-                lasso_cv = LassoCV(cv=5, random_state=42, max_iter=1000000, alphas=alphas).fit(Xt_train, yt_train.values.ravel())
 
-                # output the selected coefficients
-                lasso_coefficients = pd.Series(lasso_cv.coef_, index=Xt_train.columns)
-                selected_features = lasso_coefficients[lasso_coefficients != 0].index.tolist()
-                
-                data_train = pd.concat([yt_train, Xt_train[selected_features]], axis=1)
-                data_test = pd.concat([yt_test, Xt_test[selected_features]], axis=1)
+            if apply_lasso:
+                data_train, data_test = run_lasso_filter(yt_train, Xt_train, yt_test, Xt_test)
             else:
                 data_train = pd.concat([yt_train, Xt_train], axis=1)
                 data_test = pd.concat([yt_test, Xt_test], axis=1)
@@ -582,8 +504,12 @@ def run_forecast(data: pd.DataFrame,
             selected_indices = search.best_estimator_.named_steps['feature_selector'].get_support()
             selected_variables = Xt_train.columns[selected_indices]
         elif fs_method == "pcmci":
-            data_train = pd.concat([yt_train, Xt_train], axis=1)
-            data_test = pd.concat([yt_test, Xt_test], axis=1)
+
+            if apply_lasso:
+                data_train, data_test = run_lasso_filter(yt_train, Xt_train, yt_test, Xt_test)
+            else:
+                data_train = pd.concat([yt_train, Xt_train], axis=1)
+                data_test = pd.concat([yt_test, Xt_test], axis=1)
 
             data_train_tigramite = pp.DataFrame(data_train.values, var_names=data_train.columns)
 
