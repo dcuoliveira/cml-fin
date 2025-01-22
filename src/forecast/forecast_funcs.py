@@ -514,7 +514,7 @@ def run_forecast(data: pd.DataFrame,
             data_train_tigramite = pp.DataFrame(data_train.values, var_names=data_train.columns)
 
             pcmci = PCMCI(dataframe=data_train_tigramite, cond_ind_test=cmiknn.CMIknn(), verbosity=0)
-            pcmci.run_pcmci(tau_min=0, tau_max=selected_p, pc_alpha=pval_threshold, n_jobs=-1)
+            pcmci.run_pcmci(tau_min=0, tau_max=selected_p, pc_alpha=pval_threshold)
 
             parents_set = dict()
             for effect in pcmci.all_parents.keys():
