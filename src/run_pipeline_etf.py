@@ -1,6 +1,8 @@
 import argparse
-import pandas as pd
 import os
+import warnings
+
+import pandas as pd
 
 from forecast.forecast_funcs import run_forecast
 from metadata.etfs import etfs_large, etfs_small
@@ -29,6 +31,13 @@ parser.add_argument("--apply_lasso", type=str, default=False)
 parser.add_argument("--target", type=str, default="ldEXME")
 
 if __name__ == "__main__":
+    # RandomizedSearchCV when param grid has fewer combinations than n_iter
+    warnings.filterwarnings(
+        "ignore",
+        message=r"The total space of parameters .* is smaller than n_iter",
+        category=UserWarning,
+        module=r"sklearn\.model_selection\._search",
+    )
 
     args = parser.parse_args()
 
