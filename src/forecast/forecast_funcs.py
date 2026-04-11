@@ -13,6 +13,7 @@ import os
 from os.path import join
 from sklearn.pipeline import Pipeline
 from sklearn.linear_model import LassoCV
+from joblib import Parallel, delayed
 
 try:
     from causalnex.structure.dynotears import from_pandas_dynamic
@@ -37,6 +38,149 @@ except:
 from models.ClusteringModels import ClusteringModels, matchClusters
 from models.ModelClasses import LassoWrapper, LinearRegressionWrapper, RandomForestWrapper, SVMWrapper
 from utils.parsers import add_and_keep_lags_only
+
+
+def _sfs_step(step, start, data, data_lagged_full, lag_col_to_base,
+              target, estimation_window, selected_columns, labelled_clusters,
+              p, max_p, fs_method, n_iter, inner_n_jobs, seed, incercept):
+    """Execute one rolling-window SFS step (used by both parallel and sequential paths).
+
+    Parameters
+    ----------
+    data_lagged_full : pd.DataFrame or None
+        Full-dataset precomputed lag DataFrame (opt 3). None falls back to per-step
+        computation (required when p == -1 and selected_p varies per step).
+
+    Returns
+    -------
+    tuple : (pred_df, parents_row | None)
+    """
+    # -- rebuild CV + estimator fresh (avoids shared-state issues across workers) --
+    if fs_method.startswith("sfstscv"):
+        cv = TimeSeriesSplit(n_splits=5)
+    else:
+        cv = KFold(n_splits=5)
+
+    direction = "forward" if "forward" in fs_method else "backward"
+
+    if "-lin" in fs_method:
+        model_wrapper = LinearRegressionWrapper(model_params={"fit_intercept": True})
+    elif "-rf" in fs_method:
+        model_wrapper = RandomForestWrapper()
+    elif "-svm" in fs_method:
+        model_wrapper = SVMWrapper()
+    else:
+        raise ValueError(f"SFS estimator not recognised in fs_method: {fs_method}")
+
+    # -- slice + z-score --------------------------------------------------------
+    cols = [target] + selected_columns
+    train_df = data.iloc[start:(estimation_window + step)][cols]
+    mean = train_df.mean()
+    std  = train_df.std()
+    train_df_z = (train_df - mean) / std
+    yt_train = train_df_z[[target]]
+
+    # -- lag order --------------------------------------------------------------
+    if p == -1:
+        vm = VAR(train_df_z)
+        selected_p = vm.select_order(maxlags=max_p).selected_orders["aic"]
+        if selected_p == 0:
+            selected_p = 1
+    else:
+        selected_p = min(p, max_p)
+
+    # -- build Xt_train / Xt_test -----------------------------------------------
+    if data_lagged_full is not None:
+        # Opt 3: slice precomputed raw lags and normalise with window stats
+        lag_cols = [c for c in data_lagged_full.columns
+                    if c.split("(t-")[0] in cols]
+        lag_mean = pd.Series({c: mean[lag_col_to_base[c]] for c in lag_cols})
+        lag_std  = pd.Series({c: std [lag_col_to_base[c]] for c in lag_cols})
+        Xt_train = ((data_lagged_full.iloc[start:(estimation_window + step)][lag_cols]
+                     - lag_mean) / lag_std).dropna()
+        Xt_test  = ((data_lagged_full.iloc[[estimation_window + step]][lag_cols]
+                     - lag_mean) / lag_std)
+    else:
+        # Fallback when p == -1 (selected_p varies per step)
+        test_window = data.iloc[start:(estimation_window + step + 1)][cols]
+        test_window_z = (test_window - mean) / std
+        test_window_z = test_window_z.iloc[(estimation_window + step - selected_p):]
+        Xt_tr_full = pd.concat([yt_train, train_df_z.drop(columns=[target])], axis=1)
+        Xt_te_full = pd.concat([test_window_z[[target]],
+                                 test_window_z.drop(columns=[target])], axis=1)
+        Xt_train = add_and_keep_lags_only(data=Xt_tr_full, lags=selected_p).dropna()
+        Xt_test  = add_and_keep_lags_only(data=Xt_te_full, lags=selected_p).dropna()
+
+    yt_train = yt_train.loc[Xt_train.index]
+
+    # -- SFS + RandomizedSearchCV -----------------------------------------------
+    sfs = SequentialFeatureSelector(
+        model_wrapper.ModelClass,
+        direction=direction,
+        cv=cv,
+        scoring="neg_mean_squared_error",
+    )
+    pipeline = Pipeline([("feature_selector", sfs), ("model", model_wrapper.ModelClass)])
+    search = RandomizedSearchCV(
+        estimator=pipeline,
+        param_distributions=model_wrapper.param_grid,
+        n_iter=n_iter,
+        n_jobs=inner_n_jobs,
+        cv=cv,
+        scoring="neg_mean_squared_error",
+        random_state=seed,
+    )
+    search.fit(Xt_train, yt_train.values.ravel())
+    selected_indices = search.best_estimator_.named_steps["feature_selector"].get_support()
+    selected_variables = list(Xt_train.columns[selected_indices])
+
+    # -- true test values -------------------------------------------------------
+    raw_test_val       = data.iloc[estimation_window + step][target]
+    yt_test_zscore_val = (raw_test_val - mean[target]) / std[target]
+
+    # -- OLS prediction on selected features ------------------------------------
+    if len(selected_variables) > 0:
+        Xt_sel_train = pd.concat([yt_train,
+                                   Xt_train[selected_variables]], axis=1).dropna()
+        Xt_sel_test  = Xt_test[selected_variables].dropna()
+        if incercept:
+            Xt_sel_train = Xt_sel_train.copy()
+            Xt_sel_train["const"] = 1
+            Xt_sel_test = Xt_sel_test.copy()
+            Xt_sel_test["const"] = 1
+        model_ols = sm.OLS(endog=Xt_sel_train[target],
+                           exog=Xt_sel_train.drop(columns=[target]))
+        ypred_val = float(model_ols.fit().predict(exog=Xt_sel_test)[0])
+        pred_date = Xt_sel_test.index[0]
+
+        pred_df = pd.DataFrame([{
+            "date":              pred_date,
+            "prediction_zscore": ypred_val,
+            "true_zscore":       yt_test_zscore_val,
+            "prediction":        ypred_val * std[target] + mean[target],
+            "true":              raw_test_val,
+        }])
+
+        sel_df = pd.DataFrame(1, index=selected_variables, columns=[pred_date]).T
+        melted = (sel_df.reset_index()
+                        .melt("index")
+                        .rename(columns={"index": "date"}))
+        melted["fred"] = [v.split("(")[0] for v in melted["variable"]]
+        melted = pd.merge(melted, labelled_clusters[["fred", "cluster"]],
+                          how="left", on="fred")
+        parents_row = melted
+    else:
+        pred_df = pd.DataFrame([{
+            "date":              data.index[estimation_window + step],
+            "prediction_zscore": 0,
+            "true_zscore":       yt_test_zscore_val,
+            "prediction":        0,
+            "true":              raw_test_val,
+        }])
+        parents_row = None
+
+    return pred_df, parents_row
+
 
 def cv_opt(X, y, model_wrapper, cv_type, n_splits, n_iter, seed, verbose, n_jobs, scoring):
 
@@ -104,7 +248,8 @@ def run_forecast(data: pd.DataFrame,
                  n_jobs: int = -1,
                  seed: int = 19940202,
                  max_p: int=3,
-                 apply_lasso: bool=False):
+                 apply_lasso: bool=False,
+                 outer_n_jobs: int = 1):
     
     # sanity check causal representation learning method
     if (intra_cluster_selection == "pca") and ((clustering_method == "no") or (n_clusters ==0)):
@@ -171,6 +316,60 @@ def run_forecast(data: pd.DataFrame,
     predictions = []
     parents_of_target = []
     dags = {}
+
+    is_sfs = fs_method.startswith(("sfscv", "sfstscv"))
+
+    # Opt 3 ── precompute full lagged DataFrame once for SFS with fixed p.
+    # Avoids N_steps × |cols|² repeated pd.concat/shift calls inside the loop.
+    if is_sfs and p != -1:
+        data_lagged_full = add_and_keep_lags_only(data.copy(), lags=min(p, max_p))
+        lag_col_to_base  = {c: c.split("(t-")[0] for c in data_lagged_full.columns}
+    else:
+        data_lagged_full = None
+        lag_col_to_base  = None
+
+    # Opt 4 ── parallel outer loop (SFS + no-cluster only; returns early).
+    # When parallelising, inner RandomizedSearchCV runs with n_jobs=1 to avoid
+    # oversubscribing CPUs.
+    if is_sfs and clustering_method == "no" and outer_n_jobs != 1:
+        n_steps = len(data) - estimation_window
+        _starts, _s = [], 0
+        for _step in range(n_steps):
+            if fix_start or _step == 0:
+                _s = 0
+            else:
+                _s += 1
+            _starts.append(_s)
+
+        _labelled_clusters = pd.DataFrame(
+            [{"fred": target, "cluster": 1, "description": target}])
+        _selected_columns  = list(data.drop([target], axis=1).columns)
+
+        step_results = Parallel(n_jobs=outer_n_jobs)(
+            delayed(_sfs_step)(
+                step, _starts[step], data, data_lagged_full, lag_col_to_base,
+                target, estimation_window, _selected_columns, _labelled_clusters,
+                p, max_p, fs_method, n_iter, 1, seed, incercept
+            )
+            for step in tqdm(range(n_steps), total=n_steps,
+                             desc="forecasting {}: {}".format(fs_method, target))
+        )
+
+        predictions       = [r[0] for r in step_results]
+        parents_of_target = [r[1] for r in step_results if r[1] is not None]
+
+        predictions_df = pd.concat(predictions, axis=0)
+        predictions_df["date"] = pd.to_datetime(predictions_df["date"])
+        predictions_df.set_index("date", inplace=True)
+        if len(parents_of_target) != 0:
+            parents_of_targets_df = pd.concat(parents_of_target, axis=0)
+        else:
+            parents_of_targets_df = pd.DataFrame(
+                columns=["date", "variable", "value", "fred", "cluster"])
+        return {"predictions": predictions_df,
+                "parents_of_target": parents_of_targets_df,
+                "dags": {}}
+
     for step in tqdm(range(0, len(data) - estimation_window, 1), total=len(data) - estimation_window, desc="forecasting {}: {}".format(fs_method, target)):
 
         if fix_start or (step == 0):
@@ -489,14 +688,23 @@ def run_forecast(data: pd.DataFrame,
                 random_state=seed
             )
 
-            Xt_train = pd.concat([yt_train, Xt_train], axis=1)
-            Xt_test = pd.concat([yt_test, Xt_test], axis=1)
+            if data_lagged_full is not None:
+                # Opt 3: slice precomputed raw lags, normalise with window stats
+                _lag_cols = [c for c in data_lagged_full.columns
+                             if c.split("(t-")[0] in ([target] + selected_columns)]
+                _lag_mean = pd.Series({c: mean[lag_col_to_base[c]] for c in _lag_cols})
+                _lag_std  = pd.Series({c: std [lag_col_to_base[c]] for c in _lag_cols})
+                Xt_train = ((data_lagged_full.iloc[start:(estimation_window + step)][_lag_cols]
+                             - _lag_mean) / _lag_std).dropna()
+                Xt_test  = ((data_lagged_full.iloc[[estimation_window + step]][_lag_cols]
+                             - _lag_mean) / _lag_std)
+            else:
+                Xt_train = pd.concat([yt_train, Xt_train], axis=1)
+                Xt_test  = pd.concat([yt_test,  Xt_test ], axis=1)
+                Xt_train = add_and_keep_lags_only(data=Xt_train, lags=selected_p)
+                Xt_test  = add_and_keep_lags_only(data=Xt_test,  lags=selected_p)
+                Xt_train = Xt_train.dropna()
 
-            # create lags of Xt variables
-            Xt_train = add_and_keep_lags_only(data=Xt_train, lags=selected_p)
-            Xt_test = add_and_keep_lags_only(data=Xt_test, lags=selected_p)
-
-            Xt_train = Xt_train.dropna()
             yt_train = yt_train.loc[Xt_train.index]
 
             search_output = search.fit(Xt_train, yt_train.values.ravel())

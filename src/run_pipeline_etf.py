@@ -29,6 +29,7 @@ parser.add_argument("--inputs_path", type=str, default=os.path.join(os.path.dirn
 parser.add_argument("--outputs_path", type=str, default=os.path.join(os.path.dirname(__file__), "data", "outputs"))
 parser.add_argument("--apply_lasso", type=str, default=False)
 parser.add_argument("--target", type=str, default="ldEXME")
+parser.add_argument("--outer_n_jobs", type=int, default=1)
 
 if __name__ == "__main__":
     # RandomizedSearchCV when param grid has fewer combinations than n_iter
@@ -83,7 +84,8 @@ if __name__ == "__main__":
                             clustering_method=args.clustering_method,
                             n_clusters=args.n_clusters,
                             intra_cluster_selection=args.intra_cluster_selection,
-                            apply_lasso=args.apply_lasso)
+                            apply_lasso=args.apply_lasso,
+                            outer_n_jobs=args.outer_n_jobs)
 
     results['args'] = args
 
